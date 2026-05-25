@@ -1,15 +1,9 @@
-name: Build & Deploy The Reins Report
+name: Deploy The Reins Report
 
+# Runs every time you push from your Mac, or manually triggered
 on:
-  # Auto-deploy every weekday at 9:30 AM ET (market open)
-  schedule:
-    - cron: '30 13 * * 1-5'   # 13:30 UTC = 9:30 AM ET
-
-  # Also deploy whenever you push any change
   push:
     branches: [main]
-
-  # Manual trigger: go to Actions tab → Run workflow
   workflow_dispatch:
 
 permissions:
@@ -22,35 +16,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Refresh prices & build site
-        env:
-          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: |
-          uv run python cli.py picks refresh   || true   # don't fail if market closed
-          uv run python cli.py site build
-
-      - name: Upload to GitHub Pages
+      - name: Upload website folder to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: website/
