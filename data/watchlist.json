@@ -1,0 +1,17 @@
+{
+  "AAPL":  "Tech",
+  "MSFT":  "Tech",
+  "GOOGL": "Communication Services",
+  "META":  "Communication Services",
+  "AMZN":  "Consumer Discretionary",
+  "TSLA":  "Consumer Discretionary",
+  "GS":    "Financials",
+  "JPM":   "Financials",
+  "XOM":   "Energy",
+  "MU":    "Tech",
+  "ARM":   "Tech",
+  "DELL":  "Tech",
+  "CRM":   "Tech",
+  "SPY":   "ETF",
+  "QQQ":   "ETF"
+}

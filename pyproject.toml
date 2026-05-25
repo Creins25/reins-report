@@ -1,0 +1,15 @@
+[project]
+name = "macro-journal"
+version = "0.1.0"
+description = "Weekly macro markets journal — local data scaffold"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.4.1",
+    "fredapi>=0.5.2",
+    "matplotlib>=3.10.9",
+    "pandas>=3.0.3",
+    "pyarrow>=24.0.0",
+    "python-dotenv>=1.2.2",
+    "requests>=2.34.2",
+    "yfinance>=1.4.0",
+]

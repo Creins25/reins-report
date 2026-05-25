@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment variables — never commit your API keys
+.env
+
+# Data cache — regenerated on demand, no need to version
+data/cache/
+
+# macOS
+.DS_Store

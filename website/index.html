@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="60">
+  <title>The Reins Report · 2026-W22</title>
+  <style>
+:root {
+  --bg:           #ffffff;
+  --bg-alt:       #f7f7f5;
+  --bg-stripe:    #fafaf8;
+  --bg-header:    #0d1f35;
+  --border:       #e3e3e0;
+  --border-mid:   #ccccca;
+  --text:         #111111;
+  --text-sec:     #3a3a3a;
+  --text-muted:   #6b6b6b;
+  --text-light:   #aaaaaa;
+  --gold:         #b8960c;
+  --gold-bg:      #fdf8e8;
+  --gold-border:  #e2cb6a;
+  --navy:         #0d1f35;
+  --gain:         #15803d;
+  --gain-bg:      #f0fdf4;
+  --gain-border:  #bbf7d0;
+  --loss:         #b91c1c;
+  --loss-bg:      #fef2f2;
+  --loss-border:  #fecaca;
+  --blue:         #1d4ed8;
+  --blue-bg:      #eff6ff;
+  --blue-border:  #bfdbfe;
+  --orange:       #c2410c;
+  --orange-bg:    #fff7ed;
+  --orange-border:#fed7aa;
+  --purple:       #7c3aed;
+  --purple-bg:    #f5f3ff;
+  --purple-border:#ddd6fe;
+  --radius:       4px;
+  --shadow-sm:    0 1px 4px rgba(0,0,0,0.07);
+  --shadow:       0 2px 10px rgba(0,0,0,0.09);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { -webkit-font-smoothing:antialiased; }
+body {
+  background: var(--bg-alt);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+}
+a { color:var(--gold); text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+/* ── Masthead ──────────────────────────────────────────────── */
+.masthead { background:var(--bg-header); border-bottom:3px solid var(--gold); }
+.masthead-inner {
+  max-width:1100px; margin:0 auto; padding:22px 32px;
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:16px; flex-wrap:wrap;
+}
+.pub-eyebrow { font-size:9.5px; font-weight:800; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--gold); margin-bottom:5px; }
+.pub-name { font-size:27px; font-weight:800; color:#fff;
+  font-family:Georgia,'Times New Roman',serif; letter-spacing:-.3px; }
+.pub-tagline { font-size:12px; color:rgba(255,255,255,.45); margin-top:3px; font-style:italic; }
+.masthead-right { text-align:right; }
+.pub-week { font-size:19px; font-weight:700; color:#fff;
+  font-family:Georgia,serif; margin-bottom:3px; }
+.pub-date { font-size:12px; color:rgba(255,255,255,.5); }
+
+/* ── Ticker strip ──────────────────────────────────────────── */
+.ticker-strip {
+  background:#fff; border-bottom:1px solid var(--border);
+  overflow:hidden; height:33px; display:flex; align-items:center;
+}
+.ticker-track { display:flex; animation:scroll-ticker 50s linear infinite; white-space:nowrap; }
+@keyframes scroll-ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+.ticker-item {
+  display:inline-flex; align-items:center; gap:7px; padding:0 22px;
+  font-size:11.5px; font-family:'SF Mono','Fira Code',Consolas,monospace;
+  border-right:1px solid var(--border); color:var(--text-muted);
+}
+.t-sym { font-weight:700; color:var(--text); letter-spacing:.03em; }
+.t-val { color:var(--text); }
+.t-chg.up   { color:var(--gain); }
+.t-chg.down { color:var(--loss); }
+.t-chg.flat { color:var(--text-muted); }
+
+/* ── Page wrapper ──────────────────────────────────────────── */
+.page-wrap { max-width:1100px; margin:0 auto; padding:36px 24px 90px; }
+section { margin-bottom:52px; }
+.section-label {
+  font-size:9.5px; font-weight:800; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--text-muted);
+  padding-bottom:9px; border-bottom:2px solid var(--gold); margin-bottom:22px;
+}
+
+/* ── Market overview ───────────────────────────────────────── */
+.market-overview {
+  background:#fff; border:1px solid var(--border);
+  border-left:5px solid var(--gold); border-radius:var(--radius);
+  padding:26px 30px; margin-bottom:28px; box-shadow:var(--shadow-sm);
+}
+.overview-kicker { font-size:9.5px; font-weight:800; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--gold); margin-bottom:9px; }
+.overview-theme { font-size:21px; font-weight:700; color:var(--navy);
+  line-height:1.3; margin-bottom:13px; font-family:Georgia,serif; }
+.overview-body { font-size:13.5px; color:var(--text-sec); line-height:1.75; }
+.overview-body p { margin-bottom:10px; }
+.overview-body p:last-child { margin-bottom:0; }
+
+/* ── About panel ───────────────────────────────────────────── */
+.about-panel {
+  background:var(--bg-header); border-radius:var(--radius);
+  padding:20px 28px; margin-bottom:44px;
+  display:flex; align-items:center; gap:22px; box-shadow:var(--shadow-sm); flex-wrap:wrap;
+}
+.about-avatar {
+  width:50px; height:50px; background:var(--gold); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; font-weight:900; color:var(--bg-header); flex-shrink:0;
+  font-family:Georgia,serif;
+}
+.about-body { flex:1; min-width:200px; }
+.about-name { font-size:14px; font-weight:700; color:#fff; margin-bottom:4px; }
+.about-desc { font-size:12px; color:rgba(255,255,255,.6); line-height:1.55; }
+.about-tags { display:flex; gap:7px; margin-top:10px; flex-wrap:wrap; }
+.about-tag { font-size:9.5px; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; padding:3px 10px;
+  border:1px solid rgba(184,150,12,.45); border-radius:20px; color:var(--gold); }
+
+/* ── Track record ──────────────────────────────────────────── */
+.stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+.stat-card { background:#fff; border:1px solid var(--border);
+  border-radius:var(--radius); padding:18px 16px; box-shadow:var(--shadow-sm); }
+.stat-val { font-size:30px; font-weight:800; line-height:1; margin-bottom:6px;
+  font-family:Georgia,serif; }
+.stat-val.gain  { color:var(--gain); }
+.stat-val.loss  { color:var(--loss); }
+.stat-val.navy  { color:var(--navy); }
+.stat-val.muted { color:var(--text-muted); }
+.stat-val.gold  { color:var(--gold); }
+.stat-lbl { font-size:9.5px; font-weight:800; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--text-muted); }
+
+/* ── Pick cards ────────────────────────────────────────────── */
+.picks-list { display:flex; flex-direction:column; gap:20px; }
+.pick-card { background:#fff; border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow-sm); overflow:hidden; }
+.pick-card::before { content:''; display:block; height:4px; }
+.pick-card.long::before  { background:linear-gradient(90deg,#15803d,#4ade80); }
+.pick-card.short::before { background:linear-gradient(90deg,#b91c1c,#f87171); }
+
+.pick-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 22px 14px; border-bottom:1px solid var(--border);
+  background:var(--bg-alt); flex-wrap:wrap; gap:10px;
+}
+.pick-title-group { display:flex; align-items:baseline; gap:12px; }
+.pick-ticker { font-size:24px; font-weight:800; color:var(--navy);
+  font-family:Georgia,serif; letter-spacing:-.5px; }
+.pick-sub { font-size:12px; color:var(--text-muted); }
+.pick-badges { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+.badge { display:inline-block; font-size:9.5px; font-weight:800;
+  letter-spacing:.12em; text-transform:uppercase; padding:4px 11px; border-radius:3px; }
+.b-long    { background:var(--gain-bg);   color:var(--gain);   border:1px solid var(--gain-border); }
+.b-short   { background:var(--loss-bg);   color:var(--loss);   border:1px solid var(--loss-border); }
+.b-call    { background:var(--purple-bg); color:var(--purple); border:1px solid var(--purple-border); }
+.b-put     { background:var(--loss-bg);   color:var(--loss);   border:1px solid var(--loss-border); }
+.b-equity  { background:var(--blue-bg);   color:var(--blue);   border:1px solid var(--blue-border); }
+.b-high    { background:var(--navy);      color:#fff; }
+.b-above   { background:var(--gain-bg);   color:var(--gain);   border:1px solid var(--gain-border); }
+.b-moderate{ background:var(--blue-bg);   color:var(--blue);   border:1px solid var(--blue-border); }
+.b-spec    { background:var(--orange-bg); color:var(--orange); border:1px solid var(--orange-border); }
+.b-explore { background:var(--bg-alt);    color:var(--text-muted); border:1px solid var(--border); }
+
+.pick-body { padding:18px 22px 20px; }
+
+/* Equity metrics row */
+.pick-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+.metric label { display:block; font-size:9px; font-weight:800; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
+.metric-val { font-size:15.5px; font-weight:700;
+  font-family:'SF Mono',Consolas,monospace; color:var(--text);
+  display:flex; align-items:center; gap:5px; }
+.metric-val.gain { color:var(--gain); }
+.metric-val.loss { color:var(--loss); }
+
+.pnl-pill { font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:3px;
+  font-family:'SF Mono',Consolas,monospace; }
+.pnl-pill.gain { background:var(--gain-bg); color:var(--gain); }
+.pnl-pill.loss { background:var(--loss-bg); color:var(--loss); }
+.pnl-pill.flat { background:var(--bg-alt);  color:var(--text-muted); }
+
+/* Progress bar */
+.pick-progress { margin-bottom:16px; }
+.progress-row { display:flex; justify-content:space-between;
+  font-size:10.5px; font-family:'SF Mono',Consolas,monospace; margin-bottom:5px; color:var(--text-muted); }
+.progress-row .p-stop   { color:var(--loss); }
+.progress-row .p-rr     { font-weight:700; }
+.progress-row .p-target { color:var(--gain); }
+.progress-track { height:5px; background:var(--bg-alt); border:1px solid var(--border);
+  border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:3px; transition:width .5s ease; }
+.progress-fill.gain { background:linear-gradient(90deg,#86efac,var(--gain)); }
+.progress-fill.loss { background:linear-gradient(90deg,var(--loss),#fca5a5); }
+.progress-fill.flat { background:var(--border-mid); }
+
+/* Options block */
+.options-block {
+  background:var(--purple-bg); border:1px solid var(--purple-border);
+  border-radius:var(--radius); padding:14px 18px; margin-bottom:16px;
+}
+.options-title {
+  font-size:9px; font-weight:800; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--purple); margin-bottom:12px;
+}
+.options-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:12px; }
+.opt-item label { display:block; font-size:9px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:rgba(124,58,237,.6); margin-bottom:2px; }
+.opt-item .opt-val { font-size:14px; font-weight:700;
+  font-family:'SF Mono',Consolas,monospace; color:var(--navy); }
+.opt-item .opt-val.purple { color:var(--purple); }
+.opt-item .opt-val.loss   { color:var(--loss); }
+.opt-item .opt-val.gain   { color:var(--gain); }
+
+/* Greeks table */
+.greeks-row { display:flex; gap:0; border:1px solid var(--purple-border);
+  border-radius:var(--radius); overflow:hidden; }
+.greek-cell { flex:1; padding:8px 10px; border-right:1px solid var(--purple-border);
+  background:#fff; text-align:center; }
+.greek-cell:last-child { border-right:none; }
+.greek-sym { font-size:12px; font-weight:700; color:var(--purple);
+  font-family:Georgia,serif; display:block; }
+.greek-name { font-size:8.5px; font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:rgba(124,58,237,.5); display:block; margin-bottom:3px; }
+.greek-val { font-size:12px; font-weight:700;
+  font-family:'SF Mono',Consolas,monospace; color:var(--navy); }
+.greek-val.neg { color:var(--loss); }
+.greek-val.pos { color:var(--gain); }
+
+/* Sizing + meta */
+.pick-sizing-row { display:flex; gap:22px; padding:10px 0;
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  margin-bottom:14px; font-size:11.5px; color:var(--text-muted); flex-wrap:wrap; }
+.pick-sizing-row strong { color:var(--navy); }
+.size-pill { background:var(--gold-bg); border:1px solid var(--gold-border);
+  color:var(--gold); font-size:10px; font-weight:800; letter-spacing:.06em;
+  padding:2px 8px; border-radius:3px; text-transform:uppercase; }
+
+/* Thesis */
+.pick-thesis { font-size:13px; color:var(--text-sec); line-height:1.7; }
+.pick-catalyst { margin-top:9px; font-size:11.5px; font-weight:600; color:var(--navy); }
+.pick-catalyst::before { content:'⚡ '; }
+
+/* Entry timing */
+.entry-timing {
+  margin-top:14px; padding:12px 16px;
+  background:#fffbeb; border:1px solid #fde68a;
+  border-left:4px solid #d97706; border-radius:var(--radius);
+}
+.entry-timing-title {
+  font-size:9px; font-weight:800; letter-spacing:.18em; text-transform:uppercase;
+  color:#92400e; margin-bottom:5px;
+}
+.entry-timing-body { font-size:12.5px; color:#78350f; line-height:1.65; }
+
+/* Sparkline chart */
+.pick-chart {
+  margin-top:16px; padding-top:16px; border-top:1px solid var(--border);
+}
+.chart-label { font-size:9px; font-weight:800; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--text-light); margin-bottom:8px; }
+.chart-wrap { position:relative; }
+.chart-legend { display:flex; gap:16px; margin-top:6px; font-size:10.5px; }
+.legend-item { display:flex; align-items:center; gap:4px; color:var(--text-muted); }
+.legend-dot { width:10px; height:2px; border-radius:1px; }
+
+/* ── Tables ────────────────────────────────────────────────── */
+.table-wrap { background:#fff; border:1px solid var(--border);
+  border-radius:var(--radius); overflow-x:auto; box-shadow:var(--shadow-sm); }
+table { width:100%; border-collapse:collapse; }
+thead tr { border-bottom:2px solid var(--border-mid); }
+thead th { padding:10px 14px; text-align:left; font-size:9px; font-weight:800;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--text-muted);
+  background:var(--bg-alt); white-space:nowrap; }
+thead th.r { text-align:right; }
+tbody tr { border-bottom:1px solid var(--border); transition:background .12s; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:var(--bg-stripe); }
+tbody td { padding:9px 14px; font-size:12.5px;
+  font-family:'SF Mono',Consolas,monospace; color:var(--text); }
+tbody td.nm  { font-family:inherit; font-weight:600; font-size:13px; }
+tbody td.mu  { color:var(--text-muted); font-family:inherit; font-size:12px; }
+tbody td.r   { text-align:right; }
+tbody td.sh  { background:var(--gold-bg); color:var(--gold); font-family:inherit;
+  font-size:9px; font-weight:800; letter-spacing:.16em; text-transform:uppercase;
+  padding:6px 14px; border-bottom:1px solid var(--gold-border); }
+.up   { color:var(--gain); }
+.down { color:var(--loss); }
+.flat { color:var(--text-muted); }
+
+/* ── Prose ─────────────────────────────────────────────────── */
+.prose-card { background:#fff; border:1px solid var(--border);
+  border-radius:var(--radius); padding:28px 32px; box-shadow:var(--shadow-sm);
+  font-size:14px; line-height:1.82; color:var(--text-sec); }
+.prose-card h3 { font-size:9.5px; font-weight:800; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--gold); margin:26px 0 10px;
+  padding-bottom:7px; border-bottom:1px solid var(--border); }
+.prose-card h3:first-child { margin-top:0; }
+.prose-card p  { margin-bottom:13px; }
+.prose-card em { color:var(--text-muted); font-style:italic; }
+.prose-card strong { color:var(--text); font-weight:600; }
+.prose-card ul { padding-left:20px; margin-bottom:13px; }
+.prose-card li { margin-bottom:4px; }
+
+/* ── Footer ────────────────────────────────────────────────── */
+footer { background:var(--bg-header); color:rgba(255,255,255,.38);
+  text-align:center; padding:30px 24px; font-size:11px; line-height:1.8; margin-top:50px; }
+.footer-inner { max-width:700px; margin:0 auto; }
+footer .disclaimer { margin-bottom:10px; }
+footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:.05em; }
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width:700px) {
+  .masthead-inner  { flex-direction:column; gap:10px; }
+  .masthead-right  { text-align:left; }
+  .page-wrap       { padding:20px 14px 60px; }
+  .pick-metrics    { grid-template-columns:repeat(2,1fr); }
+  .options-row     { grid-template-columns:repeat(2,1fr); }
+  .about-panel     { flex-direction:column; }
+  .stats-row       { grid-template-columns:repeat(2,1fr); }
+  .greeks-row      { flex-wrap:wrap; }
+  .greek-cell      { flex:1 1 40%; }
+}
+</style>
+  <script>
+    // Auto-reload every 60 seconds for live P&L updates
+    // Pair with: python cli.py site watch  (runs refresh+build loop in background)
+    var _lastLoad = Date.now();
+    setInterval(function() {
+      // Only reload if tab is visible and at least 60s have passed
+      if (!document.hidden && (Date.now() - _lastLoad) >= 60000) {
+        window.location.reload();
+      }
+    }, 5000);
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden && (Date.now() - _lastLoad) >= 60000) {
+        window.location.reload();
+      }
+    });
+  </script>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <div class="pub-eyebrow">Independent Research · Carter Reins</div>
+      <div class="pub-name">The Reins Report</div>
+      <div class="pub-tagline">Systematic equity &amp; macro research — not financial advice</div>
+    </div>
+    <div class="masthead-right">
+      <div class="pub-week">2026-W22</div>
+      <div class="pub-date">May 25 – May 31, 2026 · Updated May 25, 2026</div>
+    </div>
+  </div>
+</header>
+
+<div class="ticker-strip"><div class="ticker-track"><div class="ticker-item"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div><div class="ticker-item"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div><div class="ticker-item"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div><div class="ticker-item"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-2bps</span></div><div class="ticker-item"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div><div class="ticker-item"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div><div class="ticker-item"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div><div class="ticker-item"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div><div class="ticker-item"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div><div class="ticker-item"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div><div class="ticker-item"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-2bps</span></div><div class="ticker-item"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div><div class="ticker-item"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div><div class="ticker-item"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div></div></div>
+
+<div class="page-wrap">
+
+  <div class="market-overview">
+    <div class="overview-kicker">Market Structure · 2026-W22</div>
+    <div class="overview-theme">Bull market, low volatility, AI spending driving tech higher while financials are overdue for a catch up.</div>
+    <div class="overview-body"><p>Stocks had a solid week. The S&P 500 finished at 7,473, up 0.88 percent on the week and 9.17 percent for the year. The Nasdaq did even better, up 1.22 percent and now 16.76 percent year to date. Technology is still driving this market and that is not changing anytime soon. What really stood out last week was the Russell 2000 surging 2.72 percent. When small caps show up like that it usually means the rally has real legs. It is not just a handful of mega cap stocks holding everything up.</p>
+<p>The volatility picture is genuinely supportive right now. The VIX fell almost 10 percent last week to 16.70 and the MOVE index, which tracks bond market volatility, also pulled back to 78.4. Both are calm. That is exactly the environment where you want to be holding long call options because you get the full benefit of any upside move without the premium getting eaten by rising volatility. The 10 year Treasury held at 4.57 percent and the yield curve is steepening, which is real money for JPM's net interest margin every single quarter.</p>
+<p>On commodities, WTI crude fell 8.37 percent last week to 96.60 dollars. That matters because oil pulling back removes the biggest inflation tail risk that was keeping the Fed nervous. Lower oil makes it more likely that rates stay where they are or come down, which is good for growth stocks and good for bank spreads. Gold softened slightly to 4,521 dollars, which fits the risk-on mood. The dollar went basically nowhere at 99.32. No big currency moves means no headwind on company earnings. The one number worth putting a circle around is the financials sector down 4.68 percent year to date while technology is up 25.45 percent. That 30 point gap does not stay that wide forever and it is the entire reason JPM is in the portfolio.</p></div>
+  </div>
+
+  <div class="about-panel">
+    <div class="about-avatar">CR</div>
+    <div class="about-body">
+      <div class="about-name">Carter Reins — Analyst &amp; Portfolio Researcher</div>
+      <div class="about-desc">
+        Three years of active trading across equities, options, and macro markets.
+        I run a systematic framework that looks at market regime first, then hunts for
+        setups where the fundamentals and the price action line up cleanly. Every pick
+        needs at least a 3 to 1 reward to risk ratio before it makes the cut. One
+        high-conviction position per week. Maximum portfolio drawdown I will tolerate is 3 percent.
+      </div>
+      <div class="about-tags">
+        <span class="about-tag">3 Yrs Active Trading</span>
+        <span class="about-tag">Quant Framework</span>
+        <span class="about-tag">Options + Equity</span>
+        <span class="about-tag">Risk-First</span>
+        <span class="about-tag">Macro Research</span>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-label">📊 Track Record</div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">4</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">4</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">0</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val muted">—</div><div class="stat-lbl">Win Rate</div></div><div class="stat-card"><div class="stat-val gain">—</div><div class="stat-lbl">Avg Winner</div></div><div class="stat-card"><div class="stat-val loss">—</div><div class="stat-lbl">Avg Loser</div></div></div>
+  </section>
+
+  <section>
+    <div class="section-label">📈 Open Positions — Live Scorecard</div>
+    <div class="picks-list">
+        <div class="pick-card long">
+          <div class="pick-header">
+            <div class="pick-title-group">
+              <div class="pick-ticker">AMZN</div>
+              <div class="pick-sub">Consumer Discretionary · Medium</div>
+            </div>
+            <div class="pick-badges">
+              <span class="badge b-long">LONG</span>
+              <span class="badge b-call">CALL</span>
+              <span class="badge b-moderate">Moderate</span>
+            </div>
+          </div>
+          <div class="pick-body">
+            <div class="pick-metrics">
+              <div class="metric">
+                <label>Entry (Underlying)</label>
+                <div class="metric-val">$266.32</div>
+              </div>
+              <div class="metric">
+                <label>Current &amp; P&amp;L</label>
+                <div class="metric-val flat">
+                  $266.32
+                  <span class="pnl-pill flat">+0.0%</span>
+                </div>
+              </div>
+              <div class="metric">
+                <label>Target</label>
+                <div class="metric-val gain">$315.28</div>
+              </div>
+              <div class="metric">
+                <label>Stop</label>
+                <div class="metric-val loss">$250.00</div>
+              </div>
+            </div>
+
+            <div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">$250.00 stop</span>
+                <span class="p-rr">R/R 3.0:1</span>
+                <span class="p-target">$315.28 target</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill flat" style="width:0.0%"></div>
+              </div>
+            </div>
+
+            
+    <div class="options-block">
+      <div class="options-title">CALL Option Details — Max Loss = Premium Paid</div>
+      <div class="options-row">
+        <div class="opt-item">
+          <label>Strike</label>
+          <div class="opt-val purple">$270.00</div>
+        </div>
+        <div class="opt-item">
+          <label>Expiry</label>
+          <div class="opt-val">2026-06-20</div>
+        </div>
+        <div class="opt-item">
+          <label>Premium Paid</label>
+          <div class="opt-val purple">$7.77/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Break-Even at Expiry</label>
+          <div class="opt-val">$277.77</div>
+        </div>
+      </div>
+      <div class="options-row" style="margin-bottom:12px">
+        <div class="opt-item">
+          <label>IV Used</label>
+          <div class="opt-val">31.7%</div>
+        </div>
+        <div class="opt-item">
+          <label>Leverage</label>
+          <div class="opt-val purple">34.3×</div>
+        </div>
+        <div class="opt-item">
+          <label>Max Loss</label>
+          <div class="opt-val loss">$7.77/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Contract = 100 shares</label>
+          <div class="opt-val">×100</div>
+        </div>
+      </div>
+      <div class="greeks-row">
+        <div class="greek-cell">
+          <span class="greek-name">Delta</span>
+          <span class="greek-sym">Δ</span>
+          <div class="greek-val pos">0.470</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Gamma</span>
+          <span class="greek-sym">Γ</span>
+          <div class="greek-val">0.0176</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Theta / day</span>
+          <span class="greek-sym">Θ</span>
+          <div class="greek-val neg">-0.190</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Vega / 1% IV</span>
+          <span class="greek-sym">ν</span>
+          <div class="greek-val pos">+0.283</div>
+        </div>
+      </div>
+    </div>
+
+            <div class="pick-sizing-row">
+              <span><strong>Position size:</strong> <span class="size-pill">1.5% of account</span></span>
+              <span><strong>Days held:</strong> 0d</span>
+              <span><strong>Instrument:</strong> Call</span>
+            </div>
+
+            <div class="pick-thesis">AWS is back in acceleration mode at 17 percent growth and the pipeline is still filling. The advertising business is quietly approaching 60 billion dollars a year at margins most software companies would dream of. Robotics in fulfillment is adding real margin every quarter. The sell side is too conservative here. Analyst mean target is 312 dollars versus current 266 and we think 315 is reachable in the next two months.</div>
+            <div class="pick-catalyst">AWS re:Invent kicks off in June with the Trainium 3 chip reveal and major enterprise AI wins expected. Prime Day in July drives consumer sentiment. Q2 earnings in late July should show AWS guidance raised and advertising coming in above street estimates.</div>
+
+            
+    <div class="entry-timing">
+      <div class="entry-timing-title">📅 When to Buy — Entry Timing &amp; Disclaimer</div>
+      <div class="entry-timing-body">Buy Tuesday May 26 at the open. Use a limit order in the 264 to 267 range. Do not chase if the stock opens above 272. The June 20 call gives plenty of runway so there is no need to rush the entry. Avoid buying in the last 30 minutes of a big up day.</div>
+    </div>
+
+            
+    <div class="pick-chart">
+      <div class="chart-label">30-Day Price — AMZN</div>
+      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
+  <defs>
+    <linearGradient id="fill-AMZN" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- fill under curve -->
+  <polygon points="14.0,108 14.0,106.5 32.3,95.3 50.7,96.0 69.0,94.5 87.4,93.4 105.7,96.2 124.1,94.2 142.4,87.5 160.8,87.9 179.1,76.9 197.4,80.5 215.8,82.2 234.1,78.1 252.5,75.6 270.8,71.7 289.2,67.0 307.5,65.2 325.9,63.4 344.2,68.1 362.6,66.3 380.9,70.8 399.2,74.7 417.6,69.4 435.9,73.0 454.3,76.7 472.6,75.9 491.0,82.6 509.3,75.7 527.7,71.4 546.0,74.1 546.0,108" fill="url(#fill-AMZN)"/>
+  <!-- Target line -->
+  <line x1="14" y1="13.9" x2="546" y2="13.9"
+        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="13.9" dy="4" font-size="9" fill="#15803d"
+        font-family="monospace" font-weight="700">$315</text>
+  <!-- Entry line -->
+  <line x1="14" y1="74.1" x2="546" y2="74.1"
+        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <text x="548" y="74.1" dy="4" font-size="9" fill="#1d4ed8"
+        font-family="monospace">$266</text>
+  <!-- Stop line -->
+  <line x1="14" y1="94.1" x2="546" y2="94.1"
+        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="94.1" dy="4" font-size="9" fill="#b91c1c"
+        font-family="monospace">$250</text>
+  <!-- Price line -->
+  <polyline points="14.0,106.5 32.3,95.3 50.7,96.0 69.0,94.5 87.4,93.4 105.7,96.2 124.1,94.2 142.4,87.5 160.8,87.9 179.1,76.9 197.4,80.5 215.8,82.2 234.1,78.1 252.5,75.6 270.8,71.7 289.2,67.0 307.5,65.2 325.9,63.4 344.2,68.1 362.6,66.3 380.9,70.8 399.2,74.7 417.6,69.4 435.9,73.0 454.3,76.7 472.6,75.9 491.0,82.6 509.3,75.7 527.7,71.4 546.0,74.1" fill="none" stroke="#0d1f35"
+            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Last price dot -->
+  <circle cx="546.0" cy="74.1" r="3.5" fill="#0d1f35"/>
+</svg></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $315</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $266</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $250</span>
+      </div>
+    </div>
+          </div>
+        </div>
+        
+        <div class="pick-card long">
+          <div class="pick-header">
+            <div class="pick-title-group">
+              <div class="pick-ticker">JPM</div>
+              <div class="pick-sub">Financials · Medium</div>
+            </div>
+            <div class="pick-badges">
+              <span class="badge b-long">LONG</span>
+              <span class="badge b-equity">EQUITY</span>
+              <span class="badge b-moderate">Moderate</span>
+            </div>
+          </div>
+          <div class="pick-body">
+            <div class="pick-metrics">
+              <div class="metric">
+                <label>Entry (Underlying)</label>
+                <div class="metric-val">$306.38</div>
+              </div>
+              <div class="metric">
+                <label>Current &amp; P&amp;L</label>
+                <div class="metric-val flat">
+                  $306.38
+                  <span class="pnl-pill flat">+0.0%</span>
+                </div>
+              </div>
+              <div class="metric">
+                <label>Target</label>
+                <div class="metric-val gain">$352.54</div>
+              </div>
+              <div class="metric">
+                <label>Stop</label>
+                <div class="metric-val loss">$291.00</div>
+              </div>
+            </div>
+
+            <div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">$291.00 stop</span>
+                <span class="p-rr">R/R 3.0:1</span>
+                <span class="p-target">$352.54 target</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill flat" style="width:0.0%"></div>
+              </div>
+            </div>
+
+            
+
+            <div class="pick-sizing-row">
+              <span><strong>Position size:</strong> <span class="size-pill">1.5% of account</span></span>
+              <span><strong>Days held:</strong> 0d</span>
+              <span><strong>Instrument:</strong> Equity</span>
+            </div>
+
+            <div class="pick-thesis">Financials have been completely left behind in this rally. XLF is down 4.7 percent this year while the S&P is up over 9 percent. That gap is historically extreme and it does not last. JPM is the best bank in the country right now. Rates near peak means net interest margin is at its best level in years. The investment banking pipeline has 800 billion in M&A waiting to close and credit quality is still clean. Analyst mean target is 342 dollars.</div>
+            <div class="pick-catalyst">Q2 earnings in mid July. Expect a net interest margin beat given the rate environment and a positive surprise from investment banking fees. Every week rates stay elevated adds more to JPM income. The curve steepening is a tailwind the street is not fully pricing yet.</div>
+
+            
+    <div class="entry-timing">
+      <div class="entry-timing-title">📅 When to Buy — Entry Timing &amp; Disclaimer</div>
+      <div class="entry-timing-body">Buy Tuesday May 26 at the open. Limit order near 305 to 307. This is a slow grind trade with no binary event risk this week. If JPM opens flat or slightly down on Tuesday that is your best entry. Do not buy if it gaps up more than 2 percent at the open.</div>
+    </div>
+
+            
+    <div class="pick-chart">
+      <div class="chart-label">30-Day Price — JPM</div>
+      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
+  <defs>
+    <linearGradient id="fill-JPM" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- fill under curve -->
+  <polygon points="14.0,108 14.0,72.2 32.3,76.0 50.7,83.7 69.0,77.8 87.4,77.2 105.7,67.3 124.1,73.2 142.4,73.2 160.8,75.2 179.1,80.2 197.4,75.3 215.8,75.5 234.1,78.8 252.5,72.9 270.8,74.0 289.2,81.2 307.5,78.6 325.9,70.4 344.2,83.2 362.6,89.4 380.9,92.5 399.2,85.3 417.6,92.1 435.9,92.6 454.3,95.7 472.6,91.4 491.0,98.9 509.3,89.6 527.7,88.1 546.0,83.0 546.0,108" fill="url(#fill-JPM)"/>
+  <!-- Target line -->
+  <line x1="14" y1="14.6" x2="546" y2="14.6"
+        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="14.6" dy="4" font-size="9" fill="#15803d"
+        font-family="monospace" font-weight="700">$353</text>
+  <!-- Entry line -->
+  <line x1="14" y1="83.0" x2="546" y2="83.0"
+        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <text x="548" y="83.0" dy="4" font-size="9" fill="#1d4ed8"
+        font-family="monospace">$306</text>
+  <!-- Stop line -->
+  <line x1="14" y1="105.8" x2="546" y2="105.8"
+        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="105.8" dy="4" font-size="9" fill="#b91c1c"
+        font-family="monospace">$291</text>
+  <!-- Price line -->
+  <polyline points="14.0,72.2 32.3,76.0 50.7,83.7 69.0,77.8 87.4,77.2 105.7,67.3 124.1,73.2 142.4,73.2 160.8,75.2 179.1,80.2 197.4,75.3 215.8,75.5 234.1,78.8 252.5,72.9 270.8,74.0 289.2,81.2 307.5,78.6 325.9,70.4 344.2,83.2 362.6,89.4 380.9,92.5 399.2,85.3 417.6,92.1 435.9,92.6 454.3,95.7 472.6,91.4 491.0,98.9 509.3,89.6 527.7,88.1 546.0,83.0" fill="none" stroke="#0d1f35"
+            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Last price dot -->
+  <circle cx="546.0" cy="83.0" r="3.5" fill="#0d1f35"/>
+</svg></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $353</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $306</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $291</span>
+      </div>
+    </div>
+          </div>
+        </div>
+        
+        <div class="pick-card long">
+          <div class="pick-header">
+            <div class="pick-title-group">
+              <div class="pick-ticker">NVDA</div>
+              <div class="pick-sub">Technology · Medium</div>
+            </div>
+            <div class="pick-badges">
+              <span class="badge b-long">LONG</span>
+              <span class="badge b-call">CALL</span>
+              <span class="badge b-above">Strong</span>
+            </div>
+          </div>
+          <div class="pick-body">
+            <div class="pick-metrics">
+              <div class="metric">
+                <label>Entry (Underlying)</label>
+                <div class="metric-val">$215.33</div>
+              </div>
+              <div class="metric">
+                <label>Current &amp; P&amp;L</label>
+                <div class="metric-val flat">
+                  $215.33
+                  <span class="pnl-pill flat">+0.0%</span>
+                </div>
+              </div>
+              <div class="metric">
+                <label>Target</label>
+                <div class="metric-val gain">$258.99</div>
+              </div>
+              <div class="metric">
+                <label>Stop</label>
+                <div class="metric-val loss">$201.00</div>
+              </div>
+            </div>
+
+            <div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">$201.00 stop</span>
+                <span class="p-rr">R/R 3.0:1</span>
+                <span class="p-target">$258.99 target</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill flat" style="width:0.0%"></div>
+              </div>
+            </div>
+
+            
+    <div class="options-block">
+      <div class="options-title">CALL Option Details — Max Loss = Premium Paid</div>
+      <div class="options-row">
+        <div class="opt-item">
+          <label>Strike</label>
+          <div class="opt-val purple">$220.00</div>
+        </div>
+        <div class="opt-item">
+          <label>Expiry</label>
+          <div class="opt-val">2026-06-20</div>
+        </div>
+        <div class="opt-item">
+          <label>Premium Paid</label>
+          <div class="opt-val purple">$8.62/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Break-Even at Expiry</label>
+          <div class="opt-val">$228.62</div>
+        </div>
+      </div>
+      <div class="options-row" style="margin-bottom:12px">
+        <div class="opt-item">
+          <label>IV Used</label>
+          <div class="opt-val">45.1%</div>
+        </div>
+        <div class="opt-item">
+          <label>Leverage</label>
+          <div class="opt-val purple">25.0×</div>
+        </div>
+        <div class="opt-item">
+          <label>Max Loss</label>
+          <div class="opt-val loss">$8.62/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Contract = 100 shares</label>
+          <div class="opt-val">×100</div>
+        </div>
+      </div>
+      <div class="greeks-row">
+        <div class="greek-cell">
+          <span class="greek-name">Delta</span>
+          <span class="greek-sym">Δ</span>
+          <div class="greek-val pos">0.465</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Gamma</span>
+          <span class="greek-sym">Γ</span>
+          <div class="greek-val">0.0153</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Theta / day</span>
+          <span class="greek-sym">Θ</span>
+          <div class="greek-val neg">-0.211</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Vega / 1% IV</span>
+          <span class="greek-sym">ν</span>
+          <div class="greek-val pos">+0.228</div>
+        </div>
+      </div>
+    </div>
+
+            <div class="pick-sizing-row">
+              <span><strong>Position size:</strong> <span class="size-pill">2.0% of account</span></span>
+              <span><strong>Days held:</strong> 0d</span>
+              <span><strong>Instrument:</strong> Call</span>
+            </div>
+
+            <div class="pick-thesis">Management raised full year guidance 18 percent above sell side consensus last quarter and the street is still not fully pricing in the Blackwell Ultra upgrade cycle. Microsoft, Meta, and Amazon have each committed 60 to 80 billion dollars in annual capex and most of it requires NVDA chips. H200 and GB200 are sold out for all of 2026. Analyst mean target is 295 dollars and we think that is conservative. Stop is placed below the 50 day moving average.</div>
+            <div class="pick-catalyst">Earnings Wednesday May 28 after the close. This is the single most important event for the portfolio this week. Blackwell Ultra GPU sampling begins Q3. Hyperscaler capex acceleration announcements expected in H2 earnings calls.</div>
+
+            
+    <div class="entry-timing">
+      <div class="entry-timing-title">📅 When to Buy — Entry Timing &amp; Disclaimer</div>
+      <div class="entry-timing-body">Buy Tuesday May 26 before the market close. Limit the call premium to the ask near 8.62. The call structure limits your loss to the premium paid regardless of what happens on earnings Wednesday. NVDA reports May 28 after the close. A beat and the call could be worth 25 to 40 dollars in one session. A miss and you lose the 862 dollar premium. Do not buy if NVDA gaps up more than 3 percent Tuesday morning.</div>
+    </div>
+
+            
+    <div class="pick-chart">
+      <div class="chart-label">30-Day Price — NVDA</div>
+      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
+  <defs>
+    <linearGradient id="fill-NVDA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- fill under curve -->
+  <polygon points="14.0,108 14.0,106.7 32.3,97.1 50.7,94.0 69.0,94.7 87.4,90.2 105.7,89.7 124.1,92.6 142.4,89.1 160.8,92.9 179.1,81.4 197.4,70.3 215.8,74.9 234.1,80.1 252.5,93.0 270.8,94.5 289.2,94.5 307.5,97.1 325.9,82.0 344.2,77.1 362.6,72.2 380.9,66.5 399.2,64.7 417.6,58.0 435.9,44.8 454.3,58.7 472.6,62.7 491.0,65.0 509.3,61.1 527.7,66.4 546.0,72.0 546.0,108" fill="url(#fill-NVDA)"/>
+  <!-- Target line -->
+  <line x1="14" y1="13.7" x2="546" y2="13.7"
+        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="13.7" dy="4" font-size="9" fill="#15803d"
+        font-family="monospace" font-weight="700">$259</text>
+  <!-- Entry line -->
+  <line x1="14" y1="72.0" x2="546" y2="72.0"
+        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <text x="548" y="72.0" dy="4" font-size="9" fill="#1d4ed8"
+        font-family="monospace">$215</text>
+  <!-- Stop line -->
+  <line x1="14" y1="91.1" x2="546" y2="91.1"
+        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="91.1" dy="4" font-size="9" fill="#b91c1c"
+        font-family="monospace">$201</text>
+  <!-- Price line -->
+  <polyline points="14.0,106.7 32.3,97.1 50.7,94.0 69.0,94.7 87.4,90.2 105.7,89.7 124.1,92.6 142.4,89.1 160.8,92.9 179.1,81.4 197.4,70.3 215.8,74.9 234.1,80.1 252.5,93.0 270.8,94.5 289.2,94.5 307.5,97.1 325.9,82.0 344.2,77.1 362.6,72.2 380.9,66.5 399.2,64.7 417.6,58.0 435.9,44.8 454.3,58.7 472.6,62.7 491.0,65.0 509.3,61.1 527.7,66.4 546.0,72.0" fill="none" stroke="#0d1f35"
+            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Last price dot -->
+  <circle cx="546.0" cy="72.0" r="3.5" fill="#0d1f35"/>
+</svg></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $259</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $215</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $201</span>
+      </div>
+    </div>
+          </div>
+        </div>
+        
+        <div class="pick-card long">
+          <div class="pick-header">
+            <div class="pick-title-group">
+              <div class="pick-ticker">META</div>
+              <div class="pick-sub">Technology · Medium</div>
+            </div>
+            <div class="pick-badges">
+              <span class="badge b-long">LONG</span>
+              <span class="badge b-call">CALL</span>
+              <span class="badge b-above">Strong</span>
+            </div>
+          </div>
+          <div class="pick-body">
+            <div class="pick-metrics">
+              <div class="metric">
+                <label>Entry (Underlying)</label>
+                <div class="metric-val">$610.26</div>
+              </div>
+              <div class="metric">
+                <label>Current &amp; P&amp;L</label>
+                <div class="metric-val flat">
+                  $610.26
+                  <span class="pnl-pill flat">+0.0%</span>
+                </div>
+              </div>
+              <div class="metric">
+                <label>Target</label>
+                <div class="metric-val gain">$723.99</div>
+              </div>
+              <div class="metric">
+                <label>Stop</label>
+                <div class="metric-val loss">$573.00</div>
+              </div>
+            </div>
+
+            <div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">$573.00 stop</span>
+                <span class="p-rr">R/R 3.1:1</span>
+                <span class="p-target">$723.99 target</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill flat" style="width:0.0%"></div>
+              </div>
+            </div>
+
+            
+    <div class="options-block">
+      <div class="options-title">CALL Option Details — Max Loss = Premium Paid</div>
+      <div class="options-row">
+        <div class="opt-item">
+          <label>Strike</label>
+          <div class="opt-val purple">$620.00</div>
+        </div>
+        <div class="opt-item">
+          <label>Expiry</label>
+          <div class="opt-val">2026-06-20</div>
+        </div>
+        <div class="opt-item">
+          <label>Premium Paid</label>
+          <div class="opt-val purple">$17.24/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Break-Even at Expiry</label>
+          <div class="opt-val">$637.24</div>
+        </div>
+      </div>
+      <div class="options-row" style="margin-bottom:12px">
+        <div class="opt-item">
+          <label>IV Used</label>
+          <div class="opt-val">31.7%</div>
+        </div>
+        <div class="opt-item">
+          <label>Leverage</label>
+          <div class="opt-val purple">35.4×</div>
+        </div>
+        <div class="opt-item">
+          <label>Max Loss</label>
+          <div class="opt-val loss">$17.24/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Contract = 100 shares</label>
+          <div class="opt-val">×100</div>
+        </div>
+      </div>
+      <div class="greeks-row">
+        <div class="greek-cell">
+          <span class="greek-name">Delta</span>
+          <span class="greek-sym">Δ</span>
+          <div class="greek-val pos">0.460</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Gamma</span>
+          <span class="greek-sym">Γ</span>
+          <div class="greek-val">0.0077</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Theta / day</span>
+          <span class="greek-sym">Θ</span>
+          <div class="greek-val neg">-0.433</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Vega / 1% IV</span>
+          <span class="greek-sym">ν</span>
+          <div class="greek-val pos">+0.647</div>
+        </div>
+      </div>
+    </div>
+
+            <div class="pick-sizing-row">
+              <span><strong>Position size:</strong> <span class="size-pill">2.0% of account</span></span>
+              <span><strong>Days held:</strong> 0d</span>
+              <span><strong>Instrument:</strong> Call</span>
+            </div>
+
+            <div class="pick-thesis">The gap between where META trades and where analysts think it should be is the widest among all mega cap tech right now. Mean analyst target is 826 dollars versus current 610. The company buys back 50 billion dollars of stock every year which is 4 percent of the float mechanically. Llama 4 has driven a 20 percent engagement lift on Reels and Threads. WhatsApp Business has 200 million paying subscribers and monetization is still in the early innings. Operating margins are heading toward 42 percent.</div>
+            <div class="pick-catalyst">Meta Connect on June 4 reveals Ray Ban 4 glasses and the Orion AR headset. Q2 earnings in July. The ongoing 50 billion dollar buyback provides a price floor on any dip.</div>
+
+            
+    <div class="entry-timing">
+      <div class="entry-timing-title">📅 When to Buy — Entry Timing &amp; Disclaimer</div>
+      <div class="entry-timing-body">Buy Tuesday May 26 at the open. Limit order near 608 to 612. The near term catalyst is Meta Connect on June 4 where the company shows new AR hardware. The call expires June 20 giving 15 days past the Connect event for the thesis to play out. Do not buy if META gaps up more than 3 percent at Tuesday open.</div>
+    </div>
+
+            
+    <div class="pick-chart">
+      <div class="chart-label">30-Day Price — META</div>
+      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
+  <defs>
+    <linearGradient id="fill-META" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- fill under curve -->
+  <polygon points="14.0,108 14.0,68.7 32.3,51.7 50.7,46.2 69.0,42.9 87.4,35.8 105.7,46.6 124.1,47.8 142.4,44.2 160.8,53.7 179.1,44.1 197.4,41.9 215.8,46.3 234.1,47.7 252.5,82.5 270.8,84.5 289.2,83.4 307.5,86.8 325.9,81.9 344.2,79.5 362.6,83.9 380.9,90.5 399.2,88.0 417.6,79.7 435.9,78.6 454.3,81.1 472.6,83.0 491.0,88.2 509.3,86.7 527.7,85.3 546.0,83.5 546.0,108" fill="url(#fill-META)"/>
+  <!-- Target line -->
+  <line x1="14" y1="14.2" x2="546" y2="14.2"
+        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="14.2" dy="4" font-size="9" fill="#15803d"
+        font-family="monospace" font-weight="700">$724</text>
+  <!-- Entry line -->
+  <line x1="14" y1="83.5" x2="546" y2="83.5"
+        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <text x="548" y="83.5" dy="4" font-size="9" fill="#1d4ed8"
+        font-family="monospace">$610</text>
+  <!-- Stop line -->
+  <line x1="14" y1="106.3" x2="546" y2="106.3"
+        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="106.3" dy="4" font-size="9" fill="#b91c1c"
+        font-family="monospace">$573</text>
+  <!-- Price line -->
+  <polyline points="14.0,68.7 32.3,51.7 50.7,46.2 69.0,42.9 87.4,35.8 105.7,46.6 124.1,47.8 142.4,44.2 160.8,53.7 179.1,44.1 197.4,41.9 215.8,46.3 234.1,47.7 252.5,82.5 270.8,84.5 289.2,83.4 307.5,86.8 325.9,81.9 344.2,79.5 362.6,83.9 380.9,90.5 399.2,88.0 417.6,79.7 435.9,78.6 454.3,81.1 472.6,83.0 491.0,88.2 509.3,86.7 527.7,85.3 546.0,83.5" fill="none" stroke="#0d1f35"
+            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Last price dot -->
+  <circle cx="546.0" cy="83.5" r="3.5" fill="#0d1f35"/>
+</svg></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $724</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $610</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $573</span>
+      </div>
+    </div>
+          </div>
+        </div>
+        </div>
+  </section>
+
+  <section>
+    <div class="section-label">🌐 Cross-Asset Scoreboard</div>
+    <div class="table-wrap"><table><thead><tr><th>Instrument</th><th class="r">Close</th><th class="r">1W Chg</th><th class="r">YTD Chg</th></tr></thead><tbody><tr><td class="sh" colspan="4">Rates</td></tr><tr><td class="nm">US2Y</td><td class="r">4.08%</td><td class="r down">-1bps</td><td class="r up">+61bps</td></tr><tr><td class="nm">US10Y</td><td class="r">4.57%</td><td class="r down">-2bps</td><td class="r up">+39bps</td></tr><tr><td class="nm">2s10s</td><td class="r">49bps</td><td class="r down">-1bps</td><td class="r down">-22bps</td></tr><tr><td class="nm">MOVE</td><td class="r">78.4</td><td class="r down">-1.80%</td><td class="r up">+22.62%</td></tr><tr><td class="sh" colspan="4">Equities</td></tr><tr><td class="nm">SPX</td><td class="r">7473.5</td><td class="r up">+0.88%</td><td class="r up">+9.17%</td></tr><tr><td class="nm">NDX</td><td class="r">29481.6</td><td class="r up">+1.22%</td><td class="r up">+16.76%</td></tr><tr><td class="nm">RUT</td><td class="r">2869.2</td><td class="r up">+2.72%</td><td class="r up">+15.61%</td></tr><tr><td class="nm">XLF</td><td class="r">51.94</td><td class="r up">+1.64%</td><td class="r down">-4.68%</td></tr><tr><td class="nm">XLE</td><td class="r">59.49</td><td class="r up">+0.08%</td><td class="r up">+33.93%</td></tr><tr><td class="nm">XLK</td><td class="r">180.39</td><td class="r up">+2.34%</td><td class="r up">+25.45%</td></tr><tr><td class="nm">XLY</td><td class="r">119.18</td><td class="r up">+2.27%</td><td class="r up">+0.01%</td></tr><tr><td class="nm">XLP</td><td class="r">84.80</td><td class="r up">+0.19%</td><td class="r up">+9.78%</td></tr><tr><td class="sh" colspan="4">FX</td></tr><tr><td class="nm">DXY</td><td class="r">99.32</td><td class="r up">+0.05%</td><td class="r up">+1.06%</td></tr><tr><td class="nm">EURUSD</td><td class="r">1.1621</td><td class="r down">-0.35%</td><td class="r down">-1.07%</td></tr><tr><td class="nm">USDJPY</td><td class="r">159.02</td><td class="r up">+0.40%</td><td class="r up">+1.67%</td></tr><tr><td class="sh" colspan="4">Credit</td></tr><tr><td class="nm">HYG</td><td class="r">79.91</td><td class="r up">+0.57%</td><td class="r up">+1.10%</td></tr><tr><td class="nm">LQD</td><td class="r">108.37</td><td class="r up">+0.47%</td><td class="r down">-0.15%</td></tr><tr><td class="sh" colspan="4">Commodities</td></tr><tr><td class="nm">WTI</td><td class="r">96.60</td><td class="r down">-8.37%</td><td class="r up">+68.23%</td></tr><tr><td class="nm">Gold</td><td class="r">4521.0</td><td class="r down">-0.76%</td><td class="r up">+4.52%</td></tr><tr><td class="nm">Copper</td><td class="r">6.3420</td><td class="r up">+1.45%</td><td class="r up">+12.65%</td></tr><tr><td class="sh" colspan="4">Vol</td></tr><tr><td class="nm">VIX</td><td class="r">16.70</td><td class="r down">-9.39%</td><td class="r up">+11.71%</td></tr></tbody></table></div>
+  </section>
+
+  <section>
+    <div class="section-label">🔍 Market Narrative &amp; My View</div>
+    <div class="prose-card">
+      <h3>The Story This Week</h3>
+      <p>Stocks had a solid week. The S&P 500 finished at 7,473, up 0.88 percent on the week and 9.17 percent for the year. The Nasdaq did even better, up 1.22 percent and now 16.76 percent year to date. Technology is still driving this market and that is not changing anytime soon. What really stood out last week was the Russell 2000 surging 2.72 percent. When small caps show up like that it usually means the rally has real legs. It is not just a handful of mega cap stocks holding everything up.</p>
+<p>The volatility picture is genuinely supportive right now. The VIX fell almost 10 percent last week to 16.70 and the MOVE index, which tracks bond market volatility, also pulled back to 78.4. Both are calm. That is exactly the environment where you want to be holding long call options because you get the full benefit of any upside move without the premium getting eaten by rising volatility. The 10 year Treasury held at 4.57 percent and the yield curve is steepening, which is real money for JPM's net interest margin every single quarter.</p>
+<p>On commodities, WTI crude fell 8.37 percent last week to 96.60 dollars. That matters because oil pulling back removes the biggest inflation tail risk that was keeping the Fed nervous. Lower oil makes it more likely that rates stay where they are or come down, which is good for growth stocks and good for bank spreads. Gold softened slightly to 4,521 dollars, which fits the risk-on mood. The dollar went basically nowhere at 99.32. No big currency moves means no headwind on company earnings. The one number worth putting a circle around is the financials sector down 4.68 percent year to date while technology is up 25.45 percent. That 30 point gap does not stay that wide forever and it is the entire reason JPM is in the portfolio.</p>
+      <h3>My View</h3>
+      <p>I assign ~65% probability to continued grinding upside through June option expiry. The AI capex supercycle is the dominant macro narrative and it has legs — MSFT, META, and AMZN have each committed $60-80B in annual capex anchored to NVIDIA supply, and none of that demand is going away. The Bull/LowVol regime means momentum continues to work and dips are for buying.</p>
+<strong>Base case (~65%):</strong> NVDA earnings beat on Wednesday confirms Blackwell Ultra demand — the stock moves +8-12% and our $220C triples. META Connect June 4 adds a second catalyst. By June 20 expiry, all three calls are deep in-the-money and we close at 3-5× premium. JPM grinds +3-5% into Q2 earnings in mid-July as the rates setup becomes consensus.
+<strong>Bull case (~20%):</strong> NVDA gaps +15%+ on earnings with raised guidance. The AI narrative re-accelerates. XLF starts closing the 30-point gap to XLK. Portfolio return exceeds 200% on options premium. META Connect produces a hardware catalyst that wasn't priced.
+<strong>Bear / tail case (~15%):</strong> NVDA misses on margin guidance or provides weak Q3 outlook. Vol spikes, our calls go to near-zero. Max loss on options: $862 (NVDA) + $705 (AMZN) + $1,724 (META) = $3,291 if all three expire worthless. JPM is unaffected (equity position with defined stop at $291). This scenario requires a fundamental breakdown in AI capex narrative — which I view as low probability given visible committed spending.
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="disclaimer">
+      All content reflects personal research and opinion only. Nothing on this page
+      constitutes financial advice, a recommendation to buy or sell any security, or
+      a solicitation of any kind. Past performance does not guarantee future results.
+      Options involve significant risk and are not suitable for all investors.
+    </div>
+    <div class="pub-credit">The Reins Report · 2026 · Independent Research</div>
+  </div>
+</footer>
+
+</body>
+</html>
