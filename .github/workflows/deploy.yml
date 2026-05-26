@@ -1,13 +1,20 @@
-name: Deploy The Reins Report
+name: Auto-Rebuild The Reins Report
 
-# Runs every time you push from your Mac, or manually triggered
 on:
+  # ── Automatic schedule ─────────────────────────────────────────────────────
+  schedule:
+    - cron: '30 13 * * 1-5'   # 9:30 AM ET  — market open, Monday-Friday
+    - cron: '0  21 * * 1-5'   # 5:00 PM ET  — after close, Monday-Friday
+
+  # ── Runs on every push you make from your Mac ──────────────────────────────
   push:
     branches: [main]
+
+  # ── Manual trigger (GitHub → Actions tab → Run workflow) ──────────────────
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # needed to commit updated prices back to repo
   pages: write
   id-token: write
 
@@ -16,20 +23,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
 
-      - name: Upload website folder to GitHub Pages
+    steps:
+      # 1. Check out the repo
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Set up Python 3.12
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      # 3. Install every package the project needs
+      - name: Install dependencies
+        run: |
+          pip install --quiet \
+            yfinance pandas requests fredapi click \
+            python-dateutil pyarrow
+
+      # 4. Refresh live prices (safe — skips if market is closed or offline)
+      - name: Refresh prices
+        run: python cli.py picks refresh || echo "Price refresh skipped"
+
+      # 5. Rebuild the site HTML
+      - name: Build site
+        run: python cli.py site build
+
+      # 6. Commit updated prices + HTML back to the repo so the next run
+      #    starts with current data. [skip ci] prevents an infinite loop.
+      - name: Commit updated files
+        run: |
+          git config user.name  "Reins Report Bot"
+          git config user.email "bot@thereinsreport.com"
+          git add data/picks_ledger.csv website/index.html
+          git diff --staged --quiet \
+            || git commit -m "Auto-update $(date -u '+%Y-%m-%d %H:%M UTC') [skip ci]" \
+            && git push
+        continue-on-error: true
+
+      # 7. Upload the website/ folder to GitHub Pages
+      - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: website/
 
+      # 8. Deploy
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

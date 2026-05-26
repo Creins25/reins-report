@@ -934,23 +934,32 @@ def _build_scoreboard_html(rows: list[dict]) -> str:
 
 # ── Main build ─────────────────────────────────────────────────────────────────
 
+def _current_week_str() -> str:
+    """
+    Return the best available ISO week string.
+    Prefers the current week if an entry file exists, otherwise the most
+    recent week that HAS an entry file. Never imports new_week (avoids
+    pulling in fredapi which is not needed for site builds).
+    """
+    today = date.today()
+    iso   = today.isocalendar()
+    # Walk back up to 8 weeks to find the latest entry file
+    for offset in range(8):
+        check_date = today - timedelta(days=7 * offset)
+        ci = check_date.isocalendar()
+        w  = f"{ci.year}-W{ci.week:02d}"
+        if (ENTRIES_DIR / f"{w}.md").exists():
+            return w
+    # Absolute fallback: just use today's ISO week
+    return f"{iso.year}-W{iso.week:02d}"
+
+
 def build_site(week_str: str | None = None) -> Path:
     """Generate website/index.html. Returns output path."""
     from scripts.picks import get_open_picks, compute_track_record
 
     if week_str is None:
-        # Prefer the current ISO week if its entry exists; fall back to last completed week
-        today = date.today()
-        iso = today.isocalendar()
-        current_week = f"{iso.year}-W{iso.week:02d}"
-        current_entry = ENTRIES_DIR / f"{current_week}.md"
-        if current_entry.exists():
-            week_str = current_week
-        else:
-            # Fall back to last completed Sunday-ending week
-            from scripts.new_week import _target_week
-            _, _, y, w = _target_week(today)
-            week_str = f"{y}-W{w:02d}"
+        week_str = _current_week_str()
 
     entry_path      = ENTRIES_DIR     / f"{week_str}.md"
     newsletter_path = NEWSLETTERS_DIR / f"{week_str}.md"
