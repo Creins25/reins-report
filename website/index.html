@@ -351,103 +351,114 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   // ── Live price updater ───────────────────────────────────────────────────────
-  // Fetches real-time quotes from Yahoo Finance every 30 s during market hours.
-  // Updates Current price, P&L %, and progress bar in-place without a page reload.
+  // 3-layer fallback: corsproxy.io → direct Yahoo Finance → allorigins.win
+  // Fetches per-ticker so a single failure doesn't block other picks.
+  // Stamps "Updated X:XX ET" in the masthead on success.
   (function() {
-    // Picks embedded at build time — each has id, ticker, entry, direction, stop, target
     var PICKS = [{"id": "8daf3257", "ticker": "AMZN", "entry": 266.32, "direction": "long", "stop": 250.0, "target": 315.28}, {"id": "06cf565f", "ticker": "JPM", "entry": 306.38, "direction": "long", "stop": 291.0, "target": 352.54}, {"id": "23572ccd", "ticker": "NVDA", "entry": 215.33, "direction": "long", "stop": 201.0, "target": 258.99}, {"id": "1b9d59fe", "ticker": "META", "entry": 610.26, "direction": "long", "stop": 573.0, "target": 723.99}];
 
-    // Market-hours check in ET (works in any browser timezone)
+    // Market hours: Mon-Fri 9:30-16:00 ET
     function isMarketOpen() {
       var etStr = new Date().toLocaleString('en-US', {timeZone:'America/New_York'});
       var et    = new Date(etStr);
-      var day   = et.getDay();                        // 0=Sun 6=Sat
+      var day   = et.getDay();
       if (day === 0 || day === 6) return false;
       var mins  = et.getHours() * 60 + et.getMinutes();
-      return mins >= 570 && mins < 960;               // 9:30 – 16:00 ET
+      return mins >= 570 && mins < 960;
     }
 
-    // Update the live-indicator badge in the masthead
+    function etTime() {
+      return new Date().toLocaleTimeString('en-US', {
+        timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', hour12:true
+      });
+    }
+
     function setIndicator(open) {
       var el = document.getElementById('live-indicator');
       if (!el) return;
       el.innerHTML = open
         ? '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>'
-        : '<span style="color:rgba(255,255,255,.35)">⚫ MARKET CLOSED</span>';
+        : '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>';
     }
 
-    // Format a number as "$1,234.56"
+    function stampTime() {
+      var ts = document.getElementById('live-ts');
+      if (ts) ts.textContent = 'Updated ' + etTime() + ' ET';
+    }
+
     function fmt(n) {
       return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
-    // Push a fresh price into one pick card
     function updateCard(pick, price) {
       var cpEl   = document.getElementById('cp-'      + pick.id);
       var pnlEl  = document.getElementById('pnl-'     + pick.id);
       var wrapEl = document.getElementById('cp-wrap-' + pick.id);
       var fillEl = document.getElementById('pfill-'   + pick.id);
       if (!cpEl) return;
-
       var pct  = pick.direction === 'short'
                    ? (pick.entry - price) / pick.entry * 100
                    : (price - pick.entry) / pick.entry * 100;
       var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
       var sign = pct >= 0 ? '+' : '';
-
       cpEl.textContent = fmt(price);
       if (pnlEl)  { pnlEl.textContent = sign + pct.toFixed(1) + '%';
                      pnlEl.className   = 'pnl-pill ' + cls; }
       if (wrapEl)   wrapEl.className   = 'metric-val ' + cls;
       if (fillEl) {
-        var total = pick.direction === 'short'
-                      ? pick.entry - pick.stop
-                      : pick.target - pick.entry;
-        var moved = pick.direction === 'short'
-                      ? pick.entry - price
-                      : price - pick.entry;
+        var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
+        var moved = pick.direction === 'short' ? pick.entry - price      : price - pick.entry;
         var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
-        fillEl.style.width  = w.toFixed(1) + '%';
-        fillEl.className    = 'progress-fill ' + cls;
+        fillEl.style.width = w.toFixed(1) + '%';
+        fillEl.className   = 'progress-fill ' + cls;
       }
     }
 
-    // Fetch all tickers in one Yahoo Finance batch request; fall back to corsproxy
+    // Fetch one ticker through 3 fallback layers
+    function fetchTicker(ticker) {
+      var raw = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker
+              + '?interval=1m&range=1d&includePrePost=false';
+      var cp  = 'https://corsproxy.io/?' + encodeURIComponent(raw);
+      var ao  = 'https://api.allorigins.win/get?url=' + encodeURIComponent(raw);
+
+      function parseYF(d) { return d.chart.result[0].meta.regularMarketPrice; }
+
+      // Layer 1 — corsproxy.io
+      return fetch(cp)
+        .then(function(r) { if (!r.ok) throw 0; return r.json(); })
+        .then(parseYF)
+        .catch(function() {
+          // Layer 2 — direct Yahoo Finance
+          return fetch(raw)
+            .then(function(r) { if (!r.ok) throw 0; return r.json(); })
+            .then(parseYF)
+            .catch(function() {
+              // Layer 3 — allorigins.win
+              return fetch(ao)
+                .then(function(r) { return r.json(); })
+                .then(function(d) { return parseYF(JSON.parse(d.contents)); })
+                .catch(function() { return null; });
+            });
+        });
+    }
+
     function fetchAll() {
       if (!PICKS || !PICKS.length) return;
-      var syms = PICKS.map(function(p){ return p.ticker; }).join(',');
-      var url  = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + syms
-               + '&fields=regularMarketPrice';
-
-      function applyPrices(data) {
-        var results = ((data.quoteResponse || {}).result) || [];
-        var byTick  = {};
-        results.forEach(function(r) { byTick[r.symbol] = r.regularMarketPrice; });
-        PICKS.forEach(function(pick) {
-          if (byTick[pick.ticker] != null) updateCard(pick, byTick[pick.ticker]);
+      var done = 0, total = PICKS.length, anyOk = false;
+      PICKS.forEach(function(pick) {
+        fetchTicker(pick.ticker).then(function(price) {
+          if (price != null) { updateCard(pick, price); anyOk = true; }
+          if (++done === total && anyOk) stampTime();
         });
-      }
-
-      fetch(url, {mode:'cors'})
-        .then(function(r) { return r.json(); })
-        .then(applyPrices)
-        .catch(function() {
-          // CORS blocked — route through corsproxy.io
-          fetch('https://corsproxy.io/?' + encodeURIComponent(url))
-            .then(function(r) { return r.json(); })
-            .then(applyPrices)
-            .catch(function() { /* silently ignore offline failures */ });
-        });
+      });
     }
 
-    // Main tick: check market, update indicator, fetch prices if open
     function tick() {
       var open = isMarketOpen();
       setIndicator(open);
       if (open) fetchAll();
     }
 
-    // Kick off on load then every 30 s
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() { tick(); setInterval(tick, 30000); });
     } else {
@@ -468,7 +479,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     <div class="masthead-right">
       <div class="pub-week">2026-W22</div>
       <div class="pub-date">May 25 – May 31, 2026 · Updated May 26, 2026</div>
-      <div id="live-indicator" style="margin-top:6px;color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
+        <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
+      </div>
     </div>
   </div>
 </header>
