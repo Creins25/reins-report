@@ -1050,14 +1050,17 @@ def build_site(week_str: str | None = None) -> Path:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="60">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>The Reins Report · {week_lbl}</title>
   <style>{CSS}</style>
   <script>
   // ── Live price updater ───────────────────────────────────────────────────────
-  // 4-layer fallback: allorigins.win/raw → allorigins.win/get → direct query1 → direct query2
-  // corsproxy.io removed — Yahoo Finance now blocks it with 403.
-  // Fetches per-ticker; stamps "Updated X:XX ET" in the masthead on success.
+  // Uses ONE batch allorigins.win request for ALL tickers at once.
+  // 4 simultaneous per-ticker requests hit allorigins rate limits — batch avoids that.
+  // Fallback: staggered per-ticker calls (600 ms apart) if batch fails.
+  // Direct Yahoo Finance never attempted — always CORS-blocked in browsers.
   (function() {{
     var PICKS = {picks_json};
 
@@ -1073,21 +1076,26 @@ def build_site(week_str: str | None = None) -> Path:
 
     function etTime() {{
       return new Date().toLocaleTimeString('en-US', {{
-        timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', hour12:true
+        timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true
       }});
     }}
 
-    function setIndicator(open) {{
+    // state: 'live' | 'fetching' | 'closed'
+    function setIndicator(state) {{
       var el = document.getElementById('live-indicator');
       if (!el) return;
-      el.innerHTML = open
-        ? '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>'
-        : '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>';
+      if (state === 'live')
+        el.innerHTML = '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>';
+      else if (state === 'fetching')
+        el.innerHTML = '<span style="color:rgba(255,255,255,.55)">⟳ Fetching prices...</span>';
+      else
+        el.innerHTML = '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>';
     }}
 
     function stampTime() {{
       var ts = document.getElementById('live-ts');
       if (ts) ts.textContent = 'Updated ' + etTime() + ' ET';
+      setIndicator('live');
     }}
 
     function fmt(n) {{
@@ -1118,60 +1126,70 @@ def build_site(week_str: str | None = None) -> Path:
       }}
     }}
 
-    // Fetch one ticker — 4-layer fallback (corsproxy.io blocked by YF, so lead with allorigins)
-    function fetchTicker(ticker) {{
-      // Two Yahoo Finance hostnames — query2 sometimes has looser CORS policy
-      var raw1 = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker
-               + '?interval=1m&range=1d&includePrePost=false';
-      var raw2 = raw1.replace('query1', 'query2');
+    // ── Batch fetch: ONE allorigins call for ALL tickers ──────────────────────
+    // Yahoo Finance v7/quote accepts comma-separated symbols → one network request.
+    function applyBatch(data) {{
+      var results = ((data.quoteResponse || {{}}).result) || [];
+      if (!results.length) throw new Error('empty');
+      var map = {{}};
+      results.forEach(function(r) {{ map[r.symbol] = r.regularMarketPrice; }});
+      var n = 0;
+      PICKS.forEach(function(p) {{
+        if (map[p.ticker] != null) {{ updateCard(p, map[p.ticker]); n++; }}
+      }});
+      if (n > 0) stampTime();
+    }}
 
-      // allorigins.win/raw → returns the raw JSON body (no wrapper)
-      var ao_raw = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(raw1);
-      // allorigins.win/get → wraps in {{"contents":"...","status":{{}}}}
-      var ao_get = 'https://api.allorigins.win/get?url=' + encodeURIComponent(raw1);
+    function fetchBatch() {{
+      var syms   = PICKS.map(function(p) {{ return p.ticker; }}).join(',');
+      var yf     = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + syms;
+      var ao_raw = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yf);
+      var ao_get = 'https://api.allorigins.win/get?url=' + encodeURIComponent(yf);
 
-      function parseYF(d) {{ return d.chart.result[0].meta.regularMarketPrice; }}
-
-      // Layer 1 — allorigins raw (most reliable free proxy for YF as of 2026)
+      // Try allorigins/raw first (direct JSON), then allorigins/get (wrapped)
       return fetch(ao_raw)
         .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
-        .then(parseYF)
+        .then(applyBatch)
         .catch(function() {{
-          // Layer 2 — allorigins wrapped JSON
           return fetch(ao_get)
             .then(function(r) {{ return r.json(); }})
-            .then(function(d) {{ return parseYF(JSON.parse(d.contents)); }})
-            .catch(function() {{
-              // Layer 3 — direct query1 (works if browser allows CORS)
-              return fetch(raw1)
-                .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
-                .then(parseYF)
-                .catch(function() {{
-                  // Layer 4 — direct query2 fallback
-                  return fetch(raw2)
-                    .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
-                    .then(parseYF)
-                    .catch(function() {{ return null; }});
-                }});
-            }});
+            .then(function(d) {{ return applyBatch(JSON.parse(d.contents)); }});
         }});
     }}
 
+    // ── Individual fallback: one ticker at a time, 600 ms apart ───────────────
+    function fetchIndividual() {{
+      var idx = 0, updated = 0;
+      function next() {{
+        if (idx >= PICKS.length) {{
+          if (updated > 0) stampTime();
+          return;
+        }}
+        var pick = PICKS[idx++];
+        var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+                 + pick.ticker + '?interval=1m&range=1d';
+        fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(yf))
+          .then(function(r) {{ return r.json(); }})
+          .then(function(d) {{
+            var price = d.chart.result[0].meta.regularMarketPrice;
+            updateCard(pick, price);
+            updated++;
+          }})
+          .catch(function() {{}})
+          .then(function() {{ setTimeout(next, 600); }});
+      }}
+      next();
+    }}
+
     function fetchAll() {{
-      if (!PICKS || !PICKS.length) return;
-      var done = 0, total = PICKS.length, anyOk = false;
-      PICKS.forEach(function(pick) {{
-        fetchTicker(pick.ticker).then(function(price) {{
-          if (price != null) {{ updateCard(pick, price); anyOk = true; }}
-          if (++done === total && anyOk) stampTime();
-        }});
-      }});
+      fetchBatch().catch(function() {{ fetchIndividual(); }});
     }}
 
     function tick() {{
       var open = isMarketOpen();
-      setIndicator(open);
-      if (open) fetchAll();
+      if (!open) {{ setIndicator('closed'); return; }}
+      setIndicator('fetching');
+      fetchAll();
     }}
 
     if (document.readyState === 'loading') {{

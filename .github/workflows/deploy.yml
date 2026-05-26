@@ -4,6 +4,7 @@ on:
   # ── Automatic schedule ─────────────────────────────────────────────────────
   schedule:
     - cron: '30 13 * * 1-5'   # 9:30 AM ET  — market open, Monday-Friday
+    - cron: '0  14-20 * * 1-5' # 10 AM – 4 PM ET — hourly during market hours
     - cron: '0  21 * * 1-5'   # 5:00 PM ET  — after close, Monday-Friday
 
   # ── Runs on every push you make from your Mac ──────────────────────────────
