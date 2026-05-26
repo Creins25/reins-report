@@ -1056,15 +1056,16 @@ def build_site(week_str: str | None = None) -> Path:
   <title>The Reins Report · {week_lbl}</title>
   <style>{CSS}</style>
   <script>
-  // ── Live price updater ───────────────────────────────────────────────────────
-  // Uses ONE batch allorigins.win request for ALL tickers at once.
-  // 4 simultaneous per-ticker requests hit allorigins rate limits — batch avoids that.
-  // Fallback: staggered per-ticker calls (600 ms apart) if batch fails.
-  // Direct Yahoo Finance never attempted — always CORS-blocked in browsers.
+  // ── Price updater ─────────────────────────────────────────────────────────────
+  // Uses allorigins.win/raw + v8/chart (confirmed working in browser).
+  // During market hours: updates every 30 s, shows 🟢 LIVE PRICES.
+  // After hours / closed: fetches once on load to show end-of-day prices,
+  //   shows ⚫ CLOSED — End of Day.
+  // v7/quote batch endpoint avoided — requires Yahoo auth cookies in browser.
   (function() {{
     var PICKS = {picks_json};
 
-    // Market hours: Mon-Fri 9:30-16:00 ET
+    // ── Market hours: Mon-Fri 9:30–16:00 ET ───────────────────────────────────
     function isMarketOpen() {{
       var etStr = new Date().toLocaleString('en-US', {{timeZone:'America/New_York'}});
       var et    = new Date(etStr);
@@ -1074,30 +1075,34 @@ def build_site(week_str: str | None = None) -> Path:
       return mins >= 570 && mins < 960;
     }}
 
-    function etTime() {{
+    function etTime(secs) {{
       return new Date().toLocaleTimeString('en-US', {{
-        timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true
+        timeZone:'America/New_York',
+        hour:'2-digit', minute:'2-digit', second: secs ? '2-digit' : undefined, hour12:true
       }});
     }}
 
-    // state: 'live' | 'fetching' | 'closed'
+    // ── Masthead indicator ─────────────────────────────────────────────────────
+    // state: 'live' | 'fetching' | 'closed' | 'eod'
     function setIndicator(state) {{
       var el = document.getElementById('live-indicator');
       if (!el) return;
-      if (state === 'live')
-        el.innerHTML = '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>';
-      else if (state === 'fetching')
-        el.innerHTML = '<span style="color:rgba(255,255,255,.55)">⟳ Fetching prices...</span>';
-      else
-        el.innerHTML = '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>';
+      var html = {{
+        live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
+        fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices...</span>',
+        closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
+        eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
+      }};
+      el.innerHTML = html[state] || html.closed;
     }}
 
-    function stampTime() {{
+    function stampTime(eod) {{
       var ts = document.getElementById('live-ts');
-      if (ts) ts.textContent = 'Updated ' + etTime() + ' ET';
-      setIndicator('live');
+      if (ts) ts.textContent = (eod ? 'Close ' : 'Updated ') + etTime(!eod) + ' ET';
+      setIndicator(eod ? 'eod' : 'live');
     }}
 
+    // ── DOM helpers ────────────────────────────────────────────────────────────
     function fmt(n) {{
       return '$' + n.toFixed(2).replace(/\\B(?=(\\d{{3}})+(?!\\d))/g, ',');
     }}
@@ -1126,76 +1131,50 @@ def build_site(week_str: str | None = None) -> Path:
       }}
     }}
 
-    // ── Batch fetch: ONE allorigins call for ALL tickers ──────────────────────
-    // Yahoo Finance v7/quote accepts comma-separated symbols → one network request.
-    function applyBatch(data) {{
-      var results = ((data.quoteResponse || {{}}).result) || [];
-      if (!results.length) throw new Error('empty');
-      var map = {{}};
-      results.forEach(function(r) {{ map[r.symbol] = r.regularMarketPrice; }});
-      var n = 0;
-      PICKS.forEach(function(p) {{
-        if (map[p.ticker] != null) {{ updateCard(p, map[p.ticker]); n++; }}
-      }});
-      if (n > 0) stampTime();
-    }}
-
-    function fetchBatch() {{
-      var syms   = PICKS.map(function(p) {{ return p.ticker; }}).join(',');
-      var yf     = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + syms;
-      var ao_raw = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yf);
-      var ao_get = 'https://api.allorigins.win/get?url=' + encodeURIComponent(yf);
-
-      // Try allorigins/raw first (direct JSON), then allorigins/get (wrapped)
-      return fetch(ao_raw)
-        .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
-        .then(applyBatch)
-        .catch(function() {{
-          return fetch(ao_get)
-            .then(function(r) {{ return r.json(); }})
-            .then(function(d) {{ return applyBatch(JSON.parse(d.contents)); }});
-        }});
-    }}
-
-    // ── Individual fallback: one ticker at a time, 600 ms apart ───────────────
-    function fetchIndividual() {{
+    // ── Fetch prices: staggered per-ticker via allorigins.win + v8/chart ───────
+    // v8/chart confirmed working. Staggered 700ms so allorigins doesn't rate-limit.
+    function fetchPrices(eod) {{
+      if (!PICKS || !PICKS.length) return;
       var idx = 0, updated = 0;
       function next() {{
         if (idx >= PICKS.length) {{
-          if (updated > 0) stampTime();
+          if (updated > 0) stampTime(eod);
           return;
         }}
-        var pick = PICKS[idx++];
-        var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-                 + pick.ticker + '?interval=1m&range=1d';
-        fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(yf))
+        var pick  = PICKS[idx++];
+        var yf    = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+                  + pick.ticker + '?interval=1m&range=1d';
+        var ao    = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yf);
+        fetch(ao)
           .then(function(r) {{ return r.json(); }})
           .then(function(d) {{
             var price = d.chart.result[0].meta.regularMarketPrice;
-            updateCard(pick, price);
-            updated++;
+            if (price) {{ updateCard(pick, price); updated++; }}
           }})
           .catch(function() {{}})
-          .then(function() {{ setTimeout(next, 600); }});
+          .then(function() {{ setTimeout(next, 700); }});
       }}
       next();
     }}
 
-    function fetchAll() {{
-      fetchBatch().catch(function() {{ fetchIndividual(); }});
-    }}
-
+    // ── Main loop ──────────────────────────────────────────────────────────────
     function tick() {{
       var open = isMarketOpen();
-      if (!open) {{ setIndicator('closed'); return; }}
-      setIndicator('fetching');
-      fetchAll();
+      if (open) {{
+        setIndicator('fetching');
+        fetchPrices(false);           // live — repeats every 30 s
+        setTimeout(tick, 30000);
+      }} else {{
+        // After hours: fetch once to show end-of-day prices, then stop polling
+        setIndicator('fetching');
+        fetchPrices(true);            // eod — runs once only
+      }}
     }}
 
     if (document.readyState === 'loading') {{
-      document.addEventListener('DOMContentLoaded', function() {{ tick(); setInterval(tick, 30000); }});
+      document.addEventListener('DOMContentLoaded', tick);
     }} else {{
-      tick(); setInterval(tick, 30000);
+      tick();
     }}
   }})();
   </script>
