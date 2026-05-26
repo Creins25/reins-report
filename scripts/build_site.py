@@ -12,6 +12,7 @@ Open: python cli.py site open
 """
 
 import re
+import json
 import math
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -343,6 +344,18 @@ footer { background:var(--bg-header); color:rgba(255,255,255,.38);
 .footer-inner { max-width:700px; margin:0 auto; }
 footer .disclaimer { margin-bottom:10px; }
 footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:.05em; }
+
+/* ── Live indicator ────────────────────────────────────────── */
+#live-indicator { font-size:10.5px; letter-spacing:.07em; }
+.live-pulse {
+  display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:#4ade80; margin-right:5px; vertical-align:middle;
+  animation:pulse-green 2s ease-in-out infinite;
+}
+@keyframes pulse-green {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.35; transform:scale(.7); }
+}
 
 /* ── Responsive ────────────────────────────────────────────── */
 @media (max-width:700px) {
@@ -815,6 +828,7 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
         sector      = str(row.get("sector","")).strip()
         horizon     = str(row.get("time_horizon","")).title()
         ticker      = str(row.get("ticker",""))
+        pick_id     = str(row.get("pick_id","")).replace("-","")  # safe CSS id
 
         # Risk display
         risk_pct = row.get("account_risk_pct","")
@@ -862,9 +876,9 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
               </div>
               <div class="metric">
                 <label>Current &amp; P&amp;L</label>
-                <div class="metric-val {pnl_cls}">
-                  {_safe(row['current_price'])}
-                  <span class="pnl-pill {pnl_cls}">{pnl_disp}</span>
+                <div id="cp-wrap-{pick_id}" class="metric-val {pnl_cls}">
+                  <span id="cp-{pick_id}">{_safe(row['current_price'])}</span>
+                  <span id="pnl-{pick_id}" class="pnl-pill {pnl_cls}">{pnl_disp}</span>
                 </div>
               </div>
               <div class="metric">
@@ -884,7 +898,7 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
                 <span class="p-target">{_safe(row['target_price'])} target</span>
               </div>
               <div class="progress-track">
-                <div class="progress-fill {pnl_cls}" style="width:{pct:.1f}%"></div>
+                <div id="pfill-{pick_id}" class="progress-fill {pnl_cls}" style="width:{pct:.1f}%"></div>
               </div>
             </div>
 
@@ -979,6 +993,23 @@ def build_site(week_str: str | None = None) -> Path:
         stats = {"total_picks":0,"open_picks":0,"closed_picks":0,
                  "win_rate":None,"avg_winner":None,"avg_loser":None}
 
+    # Build picks JSON for the client-side live-price updater
+    _picks_js_list = []
+    if not open_picks.empty:
+        for _, _pr in open_picks.iterrows():
+            try:
+                _picks_js_list.append({
+                    "id":        str(_pr.get("pick_id","")).replace("-",""),
+                    "ticker":    str(_pr.get("ticker","")),
+                    "entry":     float(_pr.get("entry_price", 0)),
+                    "direction": str(_pr.get("direction","long")).lower(),
+                    "stop":      float(_pr.get("stop_price",  0)),
+                    "target":    float(_pr.get("target_price", 0)),
+                })
+            except Exception:
+                pass
+    picks_json = json.dumps(_picks_js_list)
+
     # Prose — fall back to auto-generated narrative if not written yet
     written_narrative = _read_section(nl_text, "Narrative")
     if written_narrative:
@@ -1023,20 +1054,110 @@ def build_site(week_str: str | None = None) -> Path:
   <title>The Reins Report · {week_lbl}</title>
   <style>{CSS}</style>
   <script>
-    // Auto-reload every 60 seconds for live P&L updates
-    // Pair with: python cli.py site watch  (runs refresh+build loop in background)
-    var _lastLoad = Date.now();
-    setInterval(function() {{
-      // Only reload if tab is visible and at least 60s have passed
-      if (!document.hidden && (Date.now() - _lastLoad) >= 60000) {{
-        window.location.reload();
+  // ── Live price updater ───────────────────────────────────────────────────────
+  // Fetches real-time quotes from Yahoo Finance every 30 s during market hours.
+  // Updates Current price, P&L %, and progress bar in-place without a page reload.
+  (function() {{
+    // Picks embedded at build time — each has id, ticker, entry, direction, stop, target
+    var PICKS = {picks_json};
+
+    // Market-hours check in ET (works in any browser timezone)
+    function isMarketOpen() {{
+      var etStr = new Date().toLocaleString('en-US', {{timeZone:'America/New_York'}});
+      var et    = new Date(etStr);
+      var day   = et.getDay();                        // 0=Sun 6=Sat
+      if (day === 0 || day === 6) return false;
+      var mins  = et.getHours() * 60 + et.getMinutes();
+      return mins >= 570 && mins < 960;               // 9:30 – 16:00 ET
+    }}
+
+    // Update the live-indicator badge in the masthead
+    function setIndicator(open) {{
+      var el = document.getElementById('live-indicator');
+      if (!el) return;
+      el.innerHTML = open
+        ? '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>'
+        : '<span style="color:rgba(255,255,255,.35)">⚫ MARKET CLOSED</span>';
+    }}
+
+    // Format a number as "$1,234.56"
+    function fmt(n) {{
+      return '$' + n.toFixed(2).replace(/\\B(?=(\\d{{3}})+(?!\\d))/g, ',');
+    }}
+
+    // Push a fresh price into one pick card
+    function updateCard(pick, price) {{
+      var cpEl   = document.getElementById('cp-'      + pick.id);
+      var pnlEl  = document.getElementById('pnl-'     + pick.id);
+      var wrapEl = document.getElementById('cp-wrap-' + pick.id);
+      var fillEl = document.getElementById('pfill-'   + pick.id);
+      if (!cpEl) return;
+
+      var pct  = pick.direction === 'short'
+                   ? (pick.entry - price) / pick.entry * 100
+                   : (price - pick.entry) / pick.entry * 100;
+      var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
+      var sign = pct >= 0 ? '+' : '';
+
+      cpEl.textContent = fmt(price);
+      if (pnlEl)  {{ pnlEl.textContent = sign + pct.toFixed(1) + '%';
+                     pnlEl.className   = 'pnl-pill ' + cls; }}
+      if (wrapEl)   wrapEl.className   = 'metric-val ' + cls;
+      if (fillEl) {{
+        var total = pick.direction === 'short'
+                      ? pick.entry - pick.stop
+                      : pick.target - pick.entry;
+        var moved = pick.direction === 'short'
+                      ? pick.entry - price
+                      : price - pick.entry;
+        var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
+        fillEl.style.width  = w.toFixed(1) + '%';
+        fillEl.className    = 'progress-fill ' + cls;
       }}
-    }}, 5000);
-    document.addEventListener('visibilitychange', function() {{
-      if (!document.hidden && (Date.now() - _lastLoad) >= 60000) {{
-        window.location.reload();
+    }}
+
+    // Fetch all tickers in one Yahoo Finance batch request; fall back to corsproxy
+    function fetchAll() {{
+      if (!PICKS || !PICKS.length) return;
+      var syms = PICKS.map(function(p){{ return p.ticker; }}).join(',');
+      var url  = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + syms
+               + '&fields=regularMarketPrice';
+
+      function applyPrices(data) {{
+        var results = ((data.quoteResponse || {{}}).result) || [];
+        var byTick  = {{}};
+        results.forEach(function(r) {{ byTick[r.symbol] = r.regularMarketPrice; }});
+        PICKS.forEach(function(pick) {{
+          if (byTick[pick.ticker] != null) updateCard(pick, byTick[pick.ticker]);
+        }});
       }}
-    }});
+
+      fetch(url, {{mode:'cors'}})
+        .then(function(r) {{ return r.json(); }})
+        .then(applyPrices)
+        .catch(function() {{
+          // CORS blocked — route through corsproxy.io
+          fetch('https://corsproxy.io/?' + encodeURIComponent(url))
+            .then(function(r) {{ return r.json(); }})
+            .then(applyPrices)
+            .catch(function() {{ /* silently ignore offline failures */ }});
+        }});
+    }}
+
+    // Main tick: check market, update indicator, fetch prices if open
+    function tick() {{
+      var open = isMarketOpen();
+      setIndicator(open);
+      if (open) fetchAll();
+    }}
+
+    // Kick off on load then every 30 s
+    if (document.readyState === 'loading') {{
+      document.addEventListener('DOMContentLoaded', function() {{ tick(); setInterval(tick, 30000); }});
+    }} else {{
+      tick(); setInterval(tick, 30000);
+    }}
+  }})();
   </script>
 </head>
 <body>
@@ -1051,6 +1172,7 @@ def build_site(week_str: str | None = None) -> Path:
     <div class="masthead-right">
       <div class="pub-week">{week_lbl}</div>
       <div class="pub-date">{date_rng} · Updated {date.today().strftime('%b %d, %Y')}</div>
+      <div id="live-indicator" style="margin-top:6px;color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
     </div>
   </div>
 </header>
