@@ -1055,9 +1055,9 @@ def build_site(week_str: str | None = None) -> Path:
   <style>{CSS}</style>
   <script>
   // ── Live price updater ───────────────────────────────────────────────────────
-  // 3-layer fallback: corsproxy.io → direct Yahoo Finance → allorigins.win
-  // Fetches per-ticker so a single failure doesn't block other picks.
-  // Stamps "Updated X:XX ET" in the masthead on success.
+  // 4-layer fallback: allorigins.win/raw → allorigins.win/get → direct query1 → direct query2
+  // corsproxy.io removed — Yahoo Finance now blocks it with 403.
+  // Fetches per-ticker; stamps "Updated X:XX ET" in the masthead on success.
   (function() {{
     var PICKS = {picks_json};
 
@@ -1118,30 +1118,41 @@ def build_site(week_str: str | None = None) -> Path:
       }}
     }}
 
-    // Fetch one ticker through 3 fallback layers
+    // Fetch one ticker — 4-layer fallback (corsproxy.io blocked by YF, so lead with allorigins)
     function fetchTicker(ticker) {{
-      var raw = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker
-              + '?interval=1m&range=1d&includePrePost=false';
-      var cp  = 'https://corsproxy.io/?' + encodeURIComponent(raw);
-      var ao  = 'https://api.allorigins.win/get?url=' + encodeURIComponent(raw);
+      // Two Yahoo Finance hostnames — query2 sometimes has looser CORS policy
+      var raw1 = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker
+               + '?interval=1m&range=1d&includePrePost=false';
+      var raw2 = raw1.replace('query1', 'query2');
+
+      // allorigins.win/raw → returns the raw JSON body (no wrapper)
+      var ao_raw = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(raw1);
+      // allorigins.win/get → wraps in {{"contents":"...","status":{{}}}}
+      var ao_get = 'https://api.allorigins.win/get?url=' + encodeURIComponent(raw1);
 
       function parseYF(d) {{ return d.chart.result[0].meta.regularMarketPrice; }}
 
-      // Layer 1 — corsproxy.io
-      return fetch(cp)
+      // Layer 1 — allorigins raw (most reliable free proxy for YF as of 2026)
+      return fetch(ao_raw)
         .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
         .then(parseYF)
         .catch(function() {{
-          // Layer 2 — direct Yahoo Finance
-          return fetch(raw)
-            .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
-            .then(parseYF)
+          // Layer 2 — allorigins wrapped JSON
+          return fetch(ao_get)
+            .then(function(r) {{ return r.json(); }})
+            .then(function(d) {{ return parseYF(JSON.parse(d.contents)); }})
             .catch(function() {{
-              // Layer 3 — allorigins.win
-              return fetch(ao)
-                .then(function(r) {{ return r.json(); }})
-                .then(function(d) {{ return parseYF(JSON.parse(d.contents)); }})
-                .catch(function() {{ return null; }});
+              // Layer 3 — direct query1 (works if browser allows CORS)
+              return fetch(raw1)
+                .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
+                .then(parseYF)
+                .catch(function() {{
+                  // Layer 4 — direct query2 fallback
+                  return fetch(raw2)
+                    .then(function(r) {{ if (!r.ok) throw 0; return r.json(); }})
+                    .then(parseYF)
+                    .catch(function() {{ return null; }});
+                }});
             }});
         }});
     }}
