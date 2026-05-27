@@ -526,75 +526,69 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
 
 def _auto_narrative(scoreboard_rows: list[dict]) -> str:
     """
-    Auto-generate a professional 3-paragraph market narrative from scoreboard data.
-    Used when the user hasn't yet written the Narrative section in the journal entry.
+    Auto-generate a 2-paragraph market narrative from scoreboard data.
+    Voice: direct, sharp — 19-year-old aspiring hedge fund manager.
+    Used when the Narrative section hasn't been written in the journal entry yet.
     """
     data = {r['name'].strip('*').strip(): r for r in scoreboard_rows}
 
-    def v(name):
-        return data.get(name, {}).get('close', 'N/A')
-    def w(name):
-        return data.get(name, {}).get('chg_1w', 'N/A')
-    def y(name):
-        return data.get(name, {}).get('chg_ytd', 'N/A')
+    def v(name): return data.get(name, {}).get('close', 'N/A')
+    def w(name): return data.get(name, {}).get('chg_1w', 'N/A')
+    def y(name): return data.get(name, {}).get('chg_ytd', 'N/A')
 
-    spx_w = w('SPX');  spx_v = v('SPX');  spx_y = y('SPX')
-    ndx_w = w('NDX');  ndx_v = v('NDX');  ndx_y = y('NDX')
-    rut_w = w('RUT');  rut_v = v('RUT')
-    vix_v = v('VIX');  vix_w = w('VIX')
-    us10y = v('US10Y'); us2y = v('US2Y'); spread = v('2s10s')
-    move  = v('MOVE');  move_w = w('MOVE')
-    wti_v = v('WTI');   wti_w = w('WTI');  wti_y = y('WTI')
+    spx_w = w('SPX'); spx_v = v('SPX'); spx_y = y('SPX')
+    ndx_w = w('NDX'); ndx_v = v('NDX'); ndx_y = y('NDX')
+    rut_w = w('RUT')
+    vix_v = v('VIX'); vix_w = w('VIX')
+    us10y = v('US10Y'); spread = v('2s10s')
+    move  = v('MOVE'); move_w = w('MOVE')
+    wti_v = v('WTI');  wti_w = w('WTI'); wti_y = y('WTI')
     gold_v = v('Gold'); gold_w = w('Gold')
     xlf_y = y('XLF');  xlk_y = y('XLK')
     dxy_v = v('DXY');  dxy_w = w('DXY')
 
-    # Regime classification
-    try:
-        vix_num = float(str(vix_v).replace('%',''))
-        if vix_num < 15:   vol_regime = "an exceptionally low volatility"
-        elif vix_num < 20: vol_regime = "a subdued volatility"
-        elif vix_num < 28: vol_regime = "a moderately elevated volatility"
-        else:              vol_regime = "a high volatility"
-    except Exception:
-        vol_regime = "a normal volatility"
+    spx_up   = str(spx_w).startswith('+')
+    rut_up   = str(rut_w).startswith('+')
+    wti_down = str(wti_w).startswith('-')
+    gold_dn  = str(gold_w).startswith('-')
 
-    spx_dir  = "had a solid week" if str(spx_w).startswith('+') else "pulled back"
-    ndx_move = "led the market again" if str(ndx_w).startswith('+') else "lagged the broader tape"
-    rut_read = "breadth is expanding beyond the mega caps" if str(rut_w).startswith('+') else "small caps are still lagging the large cap leaders"
-    wti_read = "sold off hard" if str(wti_w).startswith('-') else "pushed higher"
-    gold_read = "softened" if str(gold_w).startswith('-') else "moved up"
+    rut_note = (
+        f"Russell 2000 ran {rut_w} too — when small caps show up like that it means the rally "
+        f"has real breadth, not just a handful of mega caps holding the index up."
+        if rut_up else
+        f"Russell 2000 was {rut_w} — small caps are still lagging, which tells me this is a "
+        f"narrower rally than the headline numbers suggest."
+    )
+
+    oil_note = (
+        f"WTI dropped {wti_w} to {wti_v} ({wti_y} YTD) — oil pulling back removes the main "
+        f"inflation tail risk the Fed was watching and gives them cover to hold rates. "
+        f"That's good for growth and for bank spreads."
+        if wti_down else
+        f"WTI pushed to {wti_v} ({wti_w} WTD, {wti_y} YTD) — oil creeping higher is worth "
+        f"watching. Persistent energy inflation complicates the Fed's path."
+    )
 
     p1 = (
-        f"Stocks {spx_dir} this week. The S&P 500 closed at {spx_v}, up {spx_w} on the week "
-        f"and {spx_y} for the year. The Nasdaq {ndx_move} at {ndx_v} ({ndx_w} on the week, "
-        f"{ndx_y} year to date), which tells you technology is still the engine driving this "
-        f"market in 2026. The Russell 2000 moved {rut_w} this week, which means {rut_read}. "
-        f"That is a good sign. When small caps participate it usually means the rally has real legs."
+        f"S&P {'had a solid week' if spx_up else 'pulled back'}, closing at {spx_v} "
+        f"({spx_w} WTD, {spx_y} YTD). Nasdaq at {ndx_v} ({ndx_w} WTD, {ndx_y} YTD) — "
+        f"tech is still the engine and I don't see that changing. {rut_note} "
+        f"VIX at {vix_v} ({vix_w} WTD), MOVE at {move} ({move_w} WTD). Both quiet. "
+        f"That's the ideal setup for holding calls — you get the upside without vol eating your premium. "
+        f"10-year sitting at {us10y}, 2s10s at {spread}. "
+        f"Curve steepening is real money for JPM's NIM every quarter."
     )
 
     p2 = (
-        f"The VIX closed at {vix_v}, moving {vix_w} on the week. We are in {vol_regime} environment "
-        f"right now. The MOVE index, which measures bond market volatility, came in at {move} "
-        f"({move_w} this week), so both stock and rates volatility are calm. That is the ideal "
-        f"setup for the options positions we are holding. The 10 year Treasury is sitting at {us10y} "
-        f"and the yield curve spread between 2s and 10s is {spread}. The curve has been steepening "
-        f"which is genuinely good news for bank earnings and net interest margins."
+        f"{oil_note} "
+        f"Gold {'eased to' if gold_dn else 'moved to'} {gold_v} ({gold_w} WTD) — "
+        f"{'nobody rushing to safe havens, fits the risk-on tone.' if gold_dn else 'worth watching if it keeps going.'} "
+        f"Dollar at {dxy_v} ({dxy_w} WTD) — flat, no FX headwind baked into earnings. "
+        f"The stat I keep coming back to: XLF is {xlf_y} YTD vs XLK at {xlk_y} YTD. "
+        f"That spread doesn't stay this wide in a sustained bull market. That's the JPM trade in one line."
     )
 
-    p3 = (
-        f"On the commodities and currency side, WTI crude {wti_read} to {wti_v} this week ({wti_w}, "
-        f"{wti_y} year to date). Oil pulling back takes one inflation risk off the table and makes "
-        f"it easier for the Fed to hold rates steady. Gold {gold_read} to {gold_v} ({gold_w} this "
-        f"week), which fits the risk-on mood where people are not rushing to buy safe havens. "
-        f"The dollar index is at {dxy_v} ({dxy_w} this week) and basically going nowhere, so "
-        f"foreign exchange is not a big headwind for company earnings right now. The one thing "
-        f"worth watching is the gap between financials (XLF {xlf_y} year to date) and technology "
-        f"(XLK {xlk_y} year to date). That spread is extreme and it is the foundation for the "
-        f"JPM trade in the portfolio."
-    )
-
-    return f"<p>{p1}</p><p>{p2}</p><p>{p3}</p>"
+    return f"<p>{p1}</p><p>{p2}</p>"
 
 
 # ── Parsers ────────────────────────────────────────────────────────────────────
@@ -830,6 +824,15 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
         ticker      = str(row.get("ticker",""))
         pick_id     = str(row.get("pick_id","")).replace("-","")  # safe CSS id
 
+        # Entered-date logic — hide "When to Buy" once position is open
+        try:
+            added_dt      = date.fromisoformat(str(row.get("date_added","")).strip())
+            already_in    = added_dt <= date.today()
+            entered_label = added_dt.strftime("%b %d, %Y")
+        except Exception:
+            already_in    = False
+            entered_label = ""
+
         # Risk display
         risk_pct = row.get("account_risk_pct","")
         try:
@@ -908,12 +911,13 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
               <span><strong>Position size:</strong> {risk_display}</span>
               <span><strong>Days held:</strong> {days}d</span>
               <span><strong>Instrument:</strong> {instrument.title()}</span>
+              {'<span><strong>Entered:</strong> ' + entered_label + '</span>' if already_in else ''}
             </div>
 
             {'<div class="pick-thesis">' + thesis + '</div>' if thesis else ''}
             {'<div class="pick-catalyst">' + catalyst + '</div>' if catalyst else ''}
 
-            {_build_entry_timing(row)}
+            {'' if already_in else _build_entry_timing(row)}
 
             {chart_html}
           </div>
@@ -1183,10 +1187,20 @@ def build_site(week_str: str | None = None) -> Path:
 
 <header class="masthead">
   <div class="masthead-inner">
-    <div>
-      <div class="pub-eyebrow">Independent Research · Carter Reins</div>
-      <div class="pub-name">The Reins Report</div>
-      <div class="pub-tagline">Systematic equity &amp; macro research — not financial advice</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"
+           style="width:44px;height:44px;flex-shrink:0;border-radius:8px">
+        <rect width="44" height="44" rx="8" fill="#b8960c"/>
+        <rect x="2.5" y="2.5" width="39" height="39" rx="6" fill="#0d1f35"/>
+        <text x="22" y="31" text-anchor="middle"
+              font-family="Georgia,'Times New Roman',serif"
+              font-size="19" font-weight="900" fill="#b8960c" letter-spacing="-1">RR</text>
+      </svg>
+      <div>
+        <div class="pub-eyebrow">Independent Research · Carter Reins</div>
+        <div class="pub-name">The Reins Report</div>
+        <div class="pub-tagline">Equity &amp; options research — not financial advice</div>
+      </div>
     </div>
     <div class="masthead-right">
       <div class="pub-week">{week_lbl}</div>
@@ -1212,20 +1226,20 @@ def build_site(week_str: str | None = None) -> Path:
   <div class="about-panel">
     <div class="about-avatar">CR</div>
     <div class="about-body">
-      <div class="about-name">Carter Reins — Analyst &amp; Portfolio Researcher</div>
+      <div class="about-name">Carter Reins — Aspiring Fund Manager</div>
       <div class="about-desc">
-        Three years of active trading across equities, options, and macro markets.
-        I run a systematic framework that looks at market regime first, then hunts for
-        setups where the fundamentals and the price action line up cleanly. Every pick
-        needs at least a 3 to 1 reward to risk ratio before it makes the cut. One
-        high-conviction position per week. Maximum portfolio drawdown I will tolerate is 3 percent.
+        Finance student and full-time market obsessive. Three years of real trading in equities
+        and options — I built a framework around regime identification and I only take trades where
+        the fundamentals and the chart are telling the same story. Every pick needs a 3:1 R/R minimum
+        before it goes in the book. One high-conviction idea per week. Max drawdown I allow: 3%.
+        That's the whole game.
       </div>
       <div class="about-tags">
-        <span class="about-tag">3 Yrs Active Trading</span>
-        <span class="about-tag">Quant Framework</span>
+        <span class="about-tag">3 Yrs Trading</span>
         <span class="about-tag">Options + Equity</span>
-        <span class="about-tag">Risk-First</span>
-        <span class="about-tag">Macro Research</span>
+        <span class="about-tag">Regime-First</span>
+        <span class="about-tag">3:1 R/R Min</span>
+        <span class="about-tag">Macro + Micro</span>
       </div>
     </div>
   </div>
@@ -1236,7 +1250,7 @@ def build_site(week_str: str | None = None) -> Path:
   </section>
 
   <section>
-    <div class="section-label">📈 Open Positions — Live Scorecard</div>
+    <div class="section-label">📈 Open Positions</div>
     {picks_html}
   </section>
 
@@ -1246,11 +1260,10 @@ def build_site(week_str: str | None = None) -> Path:
   </section>
 
   <section>
-    <div class="section-label">🔍 Market Narrative &amp; My View{auto_note}</div>
-    <div class="prose-card">
-      <h3>The Story This Week</h3>
+    <div class="section-label">📝 My Read{auto_note}</div>
+    <div class="prose-card" style="font-size:13.5px;line-height:1.75">
       {narrative_html}
-      <h3>My View</h3>
+      <h3>The Trade Rationale</h3>
       {my_view_html}
     </div>
   </section>
