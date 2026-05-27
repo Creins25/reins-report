@@ -427,6 +427,31 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       }
     }
 
+    // ── Unrealized P&L stat card (updates after each price fetch round) ─────────
+    // livePrices tracks the latest fetched price for each pick by id.
+    var livePrices = {};
+
+    function updateUnrealizedPnl() {
+      var el = document.getElementById('unrealized-pnl-val');
+      if (!el || !PICKS || !PICKS.length) return;
+      var total = 0, count = 0;
+      PICKS.forEach(function(pick) {
+        var price = livePrices[pick.id];
+        if (price == null) return;
+        var pct = pick.direction === 'short'
+                    ? (pick.entry - price) / pick.entry * 100
+                    : (price - pick.entry) / pick.entry * 100;
+        total += pct;
+        count++;
+      });
+      if (count === 0) return;
+      var avg  = total / count;
+      var sign = avg >= 0 ? '+' : '';
+      var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
+      el.textContent = sign + avg.toFixed(2) + '%';
+      el.className   = 'stat-val ' + cls;
+    }
+
     // ── Fetch prices: staggered per-ticker via allorigins.win + v8/chart ───────
     // v8/chart confirmed working. Staggered 700ms so allorigins doesn't rate-limit.
     function fetchPrices(eod) {
@@ -434,7 +459,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       var idx = 0, updated = 0;
       function next() {
         if (idx >= PICKS.length) {
-          if (updated > 0) stampTime(eod);
+          if (updated > 0) {
+            updateUnrealizedPnl();   // refresh stat card after all tickers fetched
+            stampTime(eod);
+          }
           return;
         }
         var pick  = PICKS[idx++];
@@ -445,7 +473,11 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
           .then(function(r) { return r.json(); })
           .then(function(d) {
             var price = d.chart.result[0].meta.regularMarketPrice;
-            if (price) { updateCard(pick, price); updated++; }
+            if (price) {
+              livePrices[pick.id] = price;  // store for P&L aggregation
+              updateCard(pick, price);
+              updated++;
+            }
           })
           .catch(function() {})
           .then(function() { setTimeout(next, 700); });
@@ -540,7 +572,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">4</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">4</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">0</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val muted">—</div><div class="stat-lbl">Win Rate</div></div><div class="stat-card"><div class="stat-val gain">—</div><div class="stat-lbl">Avg Winner</div></div><div class="stat-card"><div class="stat-val loss">—</div><div class="stat-lbl">Avg Loser</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">4</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">4</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">0</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val loss" id="unrealized-pnl-val">-0.04%</div><div class="stat-lbl">Unrealized P&L</div></div></div>
   </section>
 
   <section>

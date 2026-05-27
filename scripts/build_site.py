@@ -677,19 +677,32 @@ def _build_stats_html(stats: dict) -> str:
     total  = stats.get("total_picks", 0)
     open_n = stats.get("open_picks", 0)
     closed = stats.get("closed_picks", 0)
-    wr     = f"{stats['win_rate']*100:.0f}%" if stats.get("win_rate") is not None else "—"
-    wr_cls = "gain" if stats.get("win_rate") and stats["win_rate"] > 0.5 else "muted"
-    aw     = f"{stats['avg_winner']:+.1f}%" if stats.get("avg_winner") else "—"
-    al     = f"{stats['avg_loser']:+.1f}%"  if stats.get("avg_loser")  else "—"
-    cards  = [(str(total),"Total Picks","navy"),(str(open_n),"Open","gold"),
-              (str(closed),"Closed","muted"),(wr,"Win Rate",wr_cls),
-              (aw,"Avg Winner","gain"),(al,"Avg Loser","loss")]
-    html   = '<div class="stats-row">'
-    for val, label, cls in cards:
+
+    # Unrealized P&L — avg across open picks; JS will update this live
+    avg_upnl = stats.get("avg_unrealized_pnl")
+    if avg_upnl is not None:
+        upnl_val = f"{avg_upnl:+.2f}%"
+        upnl_cls = "gain" if avg_upnl > 0.005 else ("loss" if avg_upnl < -0.005 else "muted")
+    else:
+        upnl_val = "—"
+        upnl_cls = "muted"
+
+    html = '<div class="stats-row">'
+    # Static cards (no live update needed)
+    for val, label, cls in [
+        (str(total),  "Total Picks", "navy"),
+        (str(open_n), "Open",        "gold"),
+        (str(closed), "Closed",      "muted"),
+    ]:
         html += (f'<div class="stat-card">'
                  f'<div class="stat-val {cls}">{val}</div>'
                  f'<div class="stat-lbl">{label}</div>'
                  f'</div>')
+    # Unrealized P&L — id lets the JS update the value + class live
+    html += (f'<div class="stat-card">'
+             f'<div class="stat-val {upnl_cls}" id="unrealized-pnl-val">{upnl_val}</div>'
+             f'<div class="stat-lbl">Unrealized P&L</div>'
+             f'</div>')
     html += '</div>'
     return html
 
@@ -1036,6 +1049,12 @@ def build_site(week_str: str | None = None) -> Path:
     raw_theme = tm.group(1).strip() if tm else "Theme not yet set. Fill it in the journal entry."
     theme = raw_theme.strip('*').strip()
 
+    # Add avg unrealized P&L to stats dict so _build_stats_html can render it
+    if not open_picks.empty and 'live_pnl_pct' in open_picks.columns:
+        vals = open_picks['live_pnl_pct'].dropna()
+        if len(vals):
+            stats['avg_unrealized_pnl'] = float(vals.mean())
+
     # Build components
     ticker_html     = _build_ticker_html(scoreboard_rows)
     stats_html      = _build_stats_html(stats)
@@ -1135,6 +1154,31 @@ def build_site(week_str: str | None = None) -> Path:
       }}
     }}
 
+    // ── Unrealized P&L stat card (updates after each price fetch round) ─────────
+    // livePrices tracks the latest fetched price for each pick by id.
+    var livePrices = {{}};
+
+    function updateUnrealizedPnl() {{
+      var el = document.getElementById('unrealized-pnl-val');
+      if (!el || !PICKS || !PICKS.length) return;
+      var total = 0, count = 0;
+      PICKS.forEach(function(pick) {{
+        var price = livePrices[pick.id];
+        if (price == null) return;
+        var pct = pick.direction === 'short'
+                    ? (pick.entry - price) / pick.entry * 100
+                    : (price - pick.entry) / pick.entry * 100;
+        total += pct;
+        count++;
+      }});
+      if (count === 0) return;
+      var avg  = total / count;
+      var sign = avg >= 0 ? '+' : '';
+      var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
+      el.textContent = sign + avg.toFixed(2) + '%';
+      el.className   = 'stat-val ' + cls;
+    }}
+
     // ── Fetch prices: staggered per-ticker via allorigins.win + v8/chart ───────
     // v8/chart confirmed working. Staggered 700ms so allorigins doesn't rate-limit.
     function fetchPrices(eod) {{
@@ -1142,7 +1186,10 @@ def build_site(week_str: str | None = None) -> Path:
       var idx = 0, updated = 0;
       function next() {{
         if (idx >= PICKS.length) {{
-          if (updated > 0) stampTime(eod);
+          if (updated > 0) {{
+            updateUnrealizedPnl();   // refresh stat card after all tickers fetched
+            stampTime(eod);
+          }}
           return;
         }}
         var pick  = PICKS[idx++];
@@ -1153,7 +1200,11 @@ def build_site(week_str: str | None = None) -> Path:
           .then(function(r) {{ return r.json(); }})
           .then(function(d) {{
             var price = d.chart.result[0].meta.regularMarketPrice;
-            if (price) {{ updateCard(pick, price); updated++; }}
+            if (price) {{
+              livePrices[pick.id] = price;  // store for P&L aggregation
+              updateCard(pick, price);
+              updated++;
+            }}
           }})
           .catch(function() {{}})
           .then(function() {{ setTimeout(next, 700); }});
