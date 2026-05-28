@@ -352,44 +352,120 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 }
 </style>
   <script>
-  // ── Price updater ─────────────────────────────────────────────────────────────
-  // Uses allorigins.win/raw + v8/chart (confirmed working in browser).
-  // During market hours: updates every 30 s, shows 🟢 LIVE PRICES.
-  // After hours / closed: fetches once on load to show end-of-day prices,
-  //   shows ⚫ CLOSED — End of Day.
-  // v7/quote batch endpoint avoided — requires Yahoo auth cookies in browser.
-  (function() {
+  // ── Price updater v2 ──────────────────────────────────────────────────────────
+  // Three-proxy fallback chain — if allorigins fails, tries corsproxy, then
+  // codetabs. Each proxy gets an 8-second timeout before moving to the next.
+  // Pick cards:   fetch on load + every 30 s during market hours.
+  // Ticker strip: fetch on load + every 60 s during market hours.
+  // After hours:  fetch once (end-of-day snapshot), then stop polling.
+  (function () {
+    'use strict';
+
+    // ── Pick definitions ───────────────────────────────────────────────────────
     var PICKS = [{"id": "1b9d59fe", "ticker": "META", "entry": 610.26, "direction": "long", "stop": 573.0, "target": 723.99}, {"id": "06cf565f", "ticker": "JPM", "entry": 306.38, "direction": "long", "stop": 291.0, "target": 352.54}, {"id": "23572ccd", "ticker": "NVDA", "entry": 215.33, "direction": "long", "stop": 201.0, "target": 258.99}, {"id": "8daf3257", "ticker": "AMZN", "entry": 266.32, "direction": "long", "stop": 250.0, "target": 315.28}];
 
-    // ── Market hours: Mon-Fri 9:30–16:00 ET ───────────────────────────────────
+    // ── Ticker strip symbols → data-ts ids ────────────────────────────────────
+    // data-ts attribute on .ticker-item divs tells JS which symbol to update.
+    // isBond: true means the Yahoo value is already a percentage (e.g. ^TNX = 4.57).
+    var STRIP_SYMBOLS = [
+      { yf: '^GSPC',    id: 'SPX',   isBond: false },
+      { yf: '^NDX',     id: 'NDX',   isBond: false },
+      { yf: '^VIX',     id: 'VIX',   isBond: false },
+      { yf: '^TNX',     id: 'US10Y', isBond: true  },
+      { yf: 'DX-Y.NYB', id: 'DXY',   isBond: false },
+      { yf: 'GC=F',     id: 'Gold',  isBond: false },
+      { yf: 'CL=F',     id: 'WTI',   isBond: false },
+    ];
+
+    // ── CORS proxy chain — tried left to right, first success wins ────────────
+    var PROXIES = [
+      function (u) { return 'https://api.allorigins.win/raw?url='     + encodeURIComponent(u); },
+      function (u) { return 'https://corsproxy.io/?'                  + encodeURIComponent(u); },
+      function (u) { return 'https://api.codetabs.com/v1/proxy?quest='+ encodeURIComponent(u); },
+    ];
+    var PROXY_TIMEOUT_MS = 8000;   // abort a stalled proxy after 8 s
+    var STAGGER_PICKS_MS = 600;    // wait between pick fetches (avoid rate-limits)
+    var STAGGER_STRIP_MS = 300;    // wait between strip fetches
+
+    // ── Yahoo Finance URL builder ──────────────────────────────────────────────
+    function yfUrl(ticker) {
+      return 'https://query1.finance.yahoo.com/v8/finance/chart/'
+           + ticker + '?interval=1m&range=1d';
+    }
+
+    // ── Fetch with automatic proxy fallback ────────────────────────────────────
+    // Returns a Promise that resolves to { price, prev, change, changePct }
+    // or rejects if every proxy fails.
+    function fetchWithFallback(ticker, proxyIdx) {
+      proxyIdx = proxyIdx || 0;
+      if (proxyIdx >= PROXIES.length) {
+        return Promise.reject(new Error('All proxies failed: ' + ticker));
+      }
+
+      var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = controller
+        ? setTimeout(function () { controller.abort(); }, PROXY_TIMEOUT_MS)
+        : null;
+
+      var proxyUrl = PROXIES[proxyIdx](yfUrl(ticker));
+      var opts     = controller ? { signal: controller.signal } : {};
+
+      return fetch(proxyUrl, opts)
+        .then(function (r) {
+          if (timer) clearTimeout(timer);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (d) {
+          var res = d && d.chart && d.chart.result && d.chart.result[0];
+          if (!res || !res.meta) throw new Error('No chart data');
+          var price = res.meta.regularMarketPrice;
+          var prev  = res.meta.chartPreviousClose || res.meta.regularMarketPrice;
+          if (!price) throw new Error('Price is null');
+          return {
+            price:     price,
+            prev:      prev,
+            change:    price - prev,
+            changePct: prev !== 0 ? (price - prev) / prev * 100 : 0,
+          };
+        })
+        .catch(function () {
+          if (timer) clearTimeout(timer);
+          // This proxy failed — silently try the next one
+          return fetchWithFallback(ticker, proxyIdx + 1);
+        });
+    }
+
+    // ── Market hours: Mon–Fri 9:30–16:00 ET ───────────────────────────────────
     function isMarketOpen() {
-      var etStr = new Date().toLocaleString('en-US', {timeZone:'America/New_York'});
-      var et    = new Date(etStr);
-      var day   = et.getDay();
+      var et  = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      var day = et.getDay();
       if (day === 0 || day === 6) return false;
-      var mins  = et.getHours() * 60 + et.getMinutes();
+      var mins = et.getHours() * 60 + et.getMinutes();
       return mins >= 570 && mins < 960;
     }
 
-    function etTime(secs) {
+    function etTime(withSecs) {
       return new Date().toLocaleTimeString('en-US', {
-        timeZone:'America/New_York',
-        hour:'2-digit', minute:'2-digit', second: secs ? '2-digit' : undefined, hour12:true
+        timeZone: 'America/New_York',
+        hour: '2-digit', minute: '2-digit',
+        second: withSecs ? '2-digit' : undefined,
+        hour12: true,
       });
     }
 
     // ── Masthead indicator ─────────────────────────────────────────────────────
-    // state: 'live' | 'fetching' | 'closed' | 'eod'
     function setIndicator(state) {
       var el = document.getElementById('live-indicator');
       if (!el) return;
-      var html = {
+      var map = {
         live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
-        fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices...</span>',
+        fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Fetching prices…</span>',
         closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
-        eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
+        eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day</span>',
+        error:    '<span style="color:#f87171">⚠ Price fetch failed — retrying</span>',
       };
-      el.innerHTML = html[state] || html.closed;
+      el.innerHTML = map[state] || map.closed;
     }
 
     function stampTime(eod) {
@@ -398,10 +474,24 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       setIndicator(eod ? 'eod' : 'live');
     }
 
-    // ── DOM helpers ────────────────────────────────────────────────────────────
-    function fmt(n) {
+    // ── Number formatters ──────────────────────────────────────────────────────
+    function fmtPrice(n) {
       return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
+
+    function fmtNum(n, dec) {
+      return n.toFixed(dec != null ? dec : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function autoDecimals(price, isBond) {
+      if (isBond)       return fmtNum(price, 2) + '%';
+      if (price >= 1000) return fmtNum(price, 1);
+      if (price >= 10)   return fmtNum(price, 2);
+      return fmtNum(price, 4);
+    }
+
+    // ── Pick card DOM updater ──────────────────────────────────────────────────
+    var livePrices = {};   // { [pick.id]: latestPrice }
 
     function updateCard(pick, price) {
       var cpEl   = document.getElementById('cp-'      + pick.id);
@@ -409,15 +499,17 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       var wrapEl = document.getElementById('cp-wrap-' + pick.id);
       var fillEl = document.getElementById('pfill-'   + pick.id);
       if (!cpEl) return;
+
       var pct  = pick.direction === 'short'
-                   ? (pick.entry - price) / pick.entry * 100
-                   : (price - pick.entry) / pick.entry * 100;
+                 ? (pick.entry - price) / pick.entry * 100
+                 : (price - pick.entry) / pick.entry * 100;
       var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
       var sign = pct >= 0 ? '+' : '';
-      cpEl.textContent = fmt(price);
+
+      cpEl.textContent = fmtPrice(price);
       if (pnlEl)  { pnlEl.textContent = sign + pct.toFixed(1) + '%';
-                     pnlEl.className   = 'pnl-pill ' + cls; }
-      if (wrapEl)   wrapEl.className   = 'metric-val ' + cls;
+                    pnlEl.className   = 'pnl-pill ' + cls; }
+      if (wrapEl)   wrapEl.className  = 'metric-val ' + cls;
       if (fillEl) {
         var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
         var moved = pick.direction === 'short' ? pick.entry - price      : price - pick.entry;
@@ -427,24 +519,20 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       }
     }
 
-    // ── Unrealized P&L stat card (updates after each price fetch round) ─────────
-    // livePrices tracks the latest fetched price for each pick by id.
-    var livePrices = {};
-
+    // ── Unrealized P&L stat card ───────────────────────────────────────────────
     function updateUnrealizedPnl() {
       var el = document.getElementById('unrealized-pnl-val');
-      if (!el || !PICKS || !PICKS.length) return;
+      if (!el) return;
       var total = 0, count = 0;
-      PICKS.forEach(function(pick) {
+      PICKS.forEach(function (pick) {
         var price = livePrices[pick.id];
         if (price == null) return;
         var pct = pick.direction === 'short'
-                    ? (pick.entry - price) / pick.entry * 100
-                    : (price - pick.entry) / pick.entry * 100;
-        total += pct;
-        count++;
+                  ? (pick.entry - price) / pick.entry * 100
+                  : (price - pick.entry) / pick.entry * 100;
+        total += pct; count++;
       });
-      if (count === 0) return;
+      if (!count) return;
       var avg  = total / count;
       var sign = avg >= 0 ? '+' : '';
       var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
@@ -452,51 +540,77 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       el.className   = 'stat-val ' + cls;
     }
 
-    // ── Fetch prices: staggered per-ticker via allorigins.win + v8/chart ───────
-    // v8/chart confirmed working. Staggered 700ms so allorigins doesn't rate-limit.
-    function fetchPrices(eod) {
-      if (!PICKS || !PICKS.length) return;
+    // ── Ticker strip DOM updater ───────────────────────────────────────────────
+    // Selects ALL .ticker-item elements with matching data-ts (handles duplicates
+    // created for the infinite-scroll animation — both copies get updated).
+    function updateStripItem(symbolId, data, isBond) {
+      var items = document.querySelectorAll('[data-ts="' + symbolId + '"]');
+      if (!items.length || !data) return;
+      items.forEach(function (item) {
+        var valEl = item.querySelector('.t-val');
+        var chgEl = item.querySelector('.t-chg');
+        if (valEl) valEl.textContent = autoDecimals(data.price, isBond);
+        if (chgEl) {
+          var pct  = data.changePct;
+          var sign = pct >= 0 ? '+' : '';
+          chgEl.textContent = sign + pct.toFixed(2) + '%';
+          chgEl.className   = 't-chg ' + (pct > 0.01 ? 'up' : (pct < -0.01 ? 'down' : 'flat'));
+        }
+      });
+    }
+
+    // ── Fetch pick prices — staggered so proxies don't rate-limit ─────────────
+    function fetchPickPrices(eod) {
       var idx = 0, updated = 0;
       function next() {
         if (idx >= PICKS.length) {
-          if (updated > 0) {
-            updateUnrealizedPnl();   // refresh stat card after all tickers fetched
-            stampTime(eod);
-          }
+          if (updated > 0) { updateUnrealizedPnl(); stampTime(eod); }
+          else             { setIndicator('error'); }
           return;
         }
-        var pick  = PICKS[idx++];
-        var yf    = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-                  + pick.ticker + '?interval=1m&range=1d';
-        var ao    = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yf);
-        fetch(ao)
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            var price = d.chart.result[0].meta.regularMarketPrice;
-            if (price) {
-              livePrices[pick.id] = price;  // store for P&L aggregation
-              updateCard(pick, price);
-              updated++;
-            }
+        var pick = PICKS[idx++];
+        fetchWithFallback(pick.ticker)
+          .then(function (data) {
+            livePrices[pick.id] = data.price;
+            updateCard(pick, data.price);
+            updated++;
           })
-          .catch(function() {})
-          .then(function() { setTimeout(next, 700); });
+          .catch(function () {})   // all 3 proxies failed for this ticker — skip
+          .then(function () { setTimeout(next, STAGGER_PICKS_MS); });
       }
       next();
     }
 
-    // ── Main loop ──────────────────────────────────────────────────────────────
+    // ── Fetch ticker strip prices — staggered ─────────────────────────────────
+    function fetchStripPrices() {
+      var idx = 0;
+      function next() {
+        if (idx >= STRIP_SYMBOLS.length) return;
+        var sym = STRIP_SYMBOLS[idx++];
+        fetchWithFallback(sym.yf)
+          .then(function (data) { updateStripItem(sym.id, data, sym.isBond); })
+          .catch(function () {})
+          .then(function () { setTimeout(next, STAGGER_STRIP_MS); });
+      }
+      next();
+    }
+
+    // ── Main tick ─────────────────────────────────────────────────────────────
+    var stripTimerId = null;
+
     function tick() {
       var open = isMarketOpen();
+      setIndicator('fetching');
+      fetchPickPrices(!open);   // eod=true when market is closed
+      fetchStripPrices();
+
       if (open) {
-        setIndicator('fetching');
-        fetchPrices(false);           // live — repeats every 30 s
+        // Live mode: refresh picks every 30 s, strip every 60 s
         setTimeout(tick, 30000);
-      } else {
-        // After hours: fetch once to show end-of-day prices, then stop polling
-        setIndicator('fetching');
-        fetchPrices(true);            // eod — runs once only
+        if (stripTimerId) clearInterval(stripTimerId);
+        stripTimerId = setInterval(fetchStripPrices, 60000);
       }
+      // After hours: runs once — shows end-of-day snapshot, then stops
     }
 
     if (document.readyState === 'loading') {
@@ -537,7 +651,23 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   </div>
 </header>
 
-<div class="ticker-strip"><div class="ticker-track"><div class="ticker-item"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div><div class="ticker-item"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div><div class="ticker-item"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div><div class="ticker-item"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-2bps</span></div><div class="ticker-item"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div><div class="ticker-item"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div><div class="ticker-item"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div><div class="ticker-item"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div><div class="ticker-item"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div><div class="ticker-item"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div><div class="ticker-item"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-2bps</span></div><div class="ticker-item"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div><div class="ticker-item"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div><div class="ticker-item"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div></div></div>
+<div class="ticker-strip"><div class="ticker-track">
+  <div class="ticker-item" data-ts="SPX"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div>
+  <div class="ticker-item" data-ts="NDX"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div>
+  <div class="ticker-item" data-ts="VIX"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div>
+  <div class="ticker-item" data-ts="US10Y"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-0.04%</span></div>
+  <div class="ticker-item" data-ts="DXY"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div>
+  <div class="ticker-item" data-ts="Gold"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div>
+  <div class="ticker-item" data-ts="WTI"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div>
+  <!-- Duplicate set — data-ts matches so JS updates both copies simultaneously -->
+  <div class="ticker-item" data-ts="SPX"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div>
+  <div class="ticker-item" data-ts="NDX"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div>
+  <div class="ticker-item" data-ts="VIX"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div>
+  <div class="ticker-item" data-ts="US10Y"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-0.04%</span></div>
+  <div class="ticker-item" data-ts="DXY"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div>
+  <div class="ticker-item" data-ts="Gold"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div>
+  <div class="ticker-item" data-ts="WTI"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div>
+</div></div>
 
 <div class="page-wrap">
 
