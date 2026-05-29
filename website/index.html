@@ -352,157 +352,350 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 }
 </style>
   <script>
-  // ── Price updater ─────────────────────────────────────────────────────────────
-  // Uses allorigins.win/raw + v8/chart (confirmed working in browser).
-  // During market hours: updates every 30 s, shows 🟢 LIVE PRICES.
-  // After hours / closed: fetches once on load to show end-of-day prices,
-  //   shows ⚫ CLOSED — End of Day.
-  // v7/quote batch endpoint avoided — requires Yahoo auth cookies in browser.
-  (function() {
-    var PICKS = [{"id": "1b9d59fe", "ticker": "META", "entry": 610.26, "direction": "long", "stop": 573.0, "target": 723.99}, {"id": "06cf565f", "ticker": "JPM", "entry": 306.38, "direction": "long", "stop": 291.0, "target": 352.54}, {"id": "23572ccd", "ticker": "NVDA", "entry": 215.33, "direction": "long", "stop": 201.0, "target": 258.99}, {"id": "8daf3257", "ticker": "AMZN", "entry": 266.32, "direction": "long", "stop": 250.0, "target": 315.28}];
+  // ── Price updater v3 ──────────────────────────────────────────────────────────
+  //
+  // PRICE ACCURACY
+  //   Every Yahoo Finance URL gets &_=timestamp to bust proxy caches.
+  //   Pick prices race TWO proxies simultaneously — whichever responds first wins,
+  //   cutting worst-case latency roughly in half vs. sequential fallback.
+  //   A third proxy is used as a sequential last resort if both race lanes fail.
+  //   Picks refresh every 10 s during market hours; strip every 30 s.
+  //
+  // OPTIONS-ADJUSTED P&L
+  //   For options (calls/puts) the P&L pill shows the estimated return on premium,
+  //   not the raw underlying % move.  Formula (delta-gamma approximation):
+  //     dS        = current_price − entry_price  (signed by direction)
+  //     opt_gain  = Δ·dS + ½·Γ·dS²
+  //     opt_pnl % = opt_gain / premium × 100
+  //   A small "underlying +X%" note is injected below the metric for context.
+  //   The unrealized P&L stat card also uses the options-adjusted figure.
+  //   Equity positions use the plain stock % (delta = 1, no leverage).
+  //
+  (function () {
+    'use strict';
 
-    // ── Market hours: Mon-Fri 9:30–16:00 ET ───────────────────────────────────
-    function isMarketOpen() {
-      var etStr = new Date().toLocaleString('en-US', {timeZone:'America/New_York'});
-      var et    = new Date(etStr);
-      var day   = et.getDay();
-      if (day === 0 || day === 6) return false;
-      var mins  = et.getHours() * 60 + et.getMinutes();
-      return mins >= 570 && mins < 960;
+    // ── Pick definitions ───────────────────────────────────────────────────────
+    // instrument: 'call' | 'put' | 'equity'
+    // premium:    premium paid per share at entry
+    // delta:      option delta at entry (from options block on the page)
+    // gamma:      option gamma at entry
+    var PICKS = [
+      {"id":"1b9d59fe","ticker":"META","entry":610.26,"direction":"long","stop":573.0, "target":723.99,"instrument":"call",  "premium":17.24,"delta":0.460,"gamma":0.0077},
+      {"id":"06cf565f","ticker":"JPM", "entry":306.38,"direction":"long","stop":291.0, "target":352.54,"instrument":"equity","premium":0,    "delta":1.000,"gamma":0.0   },
+      {"id":"23572ccd","ticker":"NVDA","entry":215.33,"direction":"long","stop":201.0, "target":258.99,"instrument":"call",  "premium":8.62, "delta":0.465,"gamma":0.0153},
+      {"id":"8daf3257","ticker":"AMZN","entry":266.32,"direction":"long","stop":250.0, "target":315.28,"instrument":"call",  "premium":7.77, "delta":0.470,"gamma":0.0176}
+    ];
+
+    // ── Ticker strip index symbols ─────────────────────────────────────────────
+    var STRIP = [
+      { yf:'^GSPC',    id:'SPX',   bond:false },
+      { yf:'^NDX',     id:'NDX',   bond:false },
+      { yf:'^VIX',     id:'VIX',   bond:false },
+      { yf:'^TNX',     id:'US10Y', bond:true  },   // value is already in pct
+      { yf:'DX-Y.NYB', id:'DXY',   bond:false },
+      { yf:'GC=F',     id:'Gold',  bond:false },
+      { yf:'CL=F',     id:'WTI',   bond:false },
+    ];
+
+    // ── Timing constants ───────────────────────────────────────────────────────
+    var TIMEOUT_MS    = 6000;   // per-proxy abort before we give up on it
+    var POLL_PICKS_MS = 10000;  // re-fetch pick prices every 10 s (market hours)
+    var POLL_STRIP_MS = 30000;  // re-fetch strip prices every 30 s (market hours)
+
+    // ── CORS proxies ──────────────────────────────────────────────────────────
+    // Three proxies; picks race [0] and [1] in parallel, fall back to [2].
+    var PROXIES = [
+      function(u){ return 'https://api.allorigins.win/raw?url='      + encodeURIComponent(u); },
+      function(u){ return 'https://corsproxy.io/?'                   + encodeURIComponent(u); },
+      function(u){ return 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u); },
+    ];
+
+    // ── Yahoo Finance URL builders ─────────────────────────────────────────────
+    // &_=timestamp cache-busts every proxy so it cannot serve a stale response.
+    function yfQ1(ticker) {
+      return 'https://query1.finance.yahoo.com/v8/finance/chart/'
+           + encodeURIComponent(ticker)
+           + '?interval=1m&range=1d&includePrePost=false&_=' + Date.now();
+    }
+    function yfQ2(ticker) {
+      return 'https://query2.finance.yahoo.com/v8/finance/chart/'
+           + encodeURIComponent(ticker)
+           + '?interval=1m&range=1d&includePrePost=false&_=' + Date.now();
     }
 
-    function etTime(secs) {
-      return new Date().toLocaleTimeString('en-US', {
-        timeZone:'America/New_York',
-        hour:'2-digit', minute:'2-digit', second: secs ? '2-digit' : undefined, hour12:true
+    // ── Low-level: fetch one URL via one proxy with timeout ────────────────────
+    function via(proxyFn, url) {
+      var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var t    = ctrl ? setTimeout(function(){ ctrl.abort(); }, TIMEOUT_MS) : null;
+      return fetch(proxyFn(url), ctrl ? { signal: ctrl.signal } : {})
+        .then(function(r){
+          if (t) clearTimeout(t);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(d){
+          var res = d && d.chart && d.chart.result && d.chart.result[0];
+          if (!res || !res.meta) throw new Error('No data');
+          var price = res.meta.regularMarketPrice;
+          var prev  = res.meta.chartPreviousClose || price;
+          if (!price) throw new Error('No price');
+          return {
+            price:     price,
+            prev:      prev,
+            change:    price - prev,
+            changePct: prev ? (price - prev) / prev * 100 : 0,
+          };
+        })
+        .catch(function(e){ if (t) clearTimeout(t); throw e; });
+    }
+
+    // ── Picks: race proxy[0] on query1 vs proxy[1] on query2 ─────────────────
+    // Whichever lane responds first wins. If both fail, proxy[2] is the fallback.
+    function fetchPick(ticker) {
+      return new Promise(function(resolve, reject){
+        var done = false, fails = 0;
+        function win(d)  { if (!done){ done = true; resolve(d); } }
+        function fail()  {
+          fails++;
+          if (fails === 2 && !done) {
+            via(PROXIES[2], yfQ1(ticker)).then(win).catch(reject);
+          }
+        }
+        via(PROXIES[0], yfQ1(ticker)).then(win).catch(fail);
+        via(PROXIES[1], yfQ2(ticker)).then(win).catch(fail);
       });
     }
 
-    // ── Masthead indicator ─────────────────────────────────────────────────────
-    // state: 'live' | 'fetching' | 'closed' | 'eod'
-    function setIndicator(state) {
+    // ── Strip: sequential fallback (lower priority, avoids hammering proxies) ──
+    function fetchStrip(ticker, pi) {
+      pi = pi || 0;
+      if (pi >= PROXIES.length) return Promise.reject(new Error('all fail'));
+      return via(PROXIES[pi], yfQ1(ticker))
+        .catch(function(){ return fetchStrip(ticker, pi + 1); });
+    }
+
+    // ── Market hours ──────────────────────────────────────────────────────────
+    function isOpen() {
+      var et  = new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+      if (et.getDay()===0 || et.getDay()===6) return false;
+      var m = et.getHours()*60 + et.getMinutes();
+      return m >= 570 && m < 960;
+    }
+    function etNow(secs) {
+      return new Date().toLocaleTimeString('en-US',{
+        timeZone:'America/New_York',
+        hour:'2-digit', minute:'2-digit', second:secs?'2-digit':undefined, hour12:true
+      });
+    }
+
+    // ── Indicator ─────────────────────────────────────────────────────────────
+    function setInd(state) {
       var el = document.getElementById('live-indicator');
       if (!el) return;
-      var html = {
-        live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
-        fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices...</span>',
-        closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
-        eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
+      var m = {
+        live:    '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
+        fetch:   '<span style="color:rgba(255,255,255,.55)">⟳ Updating…</span>',
+        closed:  '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
+        eod:     '<span style="color:rgba(255,255,255,.5)">📊 End of Day</span>',
+        stale:   '<span style="color:#fb923c">⚠ Data delayed — retrying</span>',
       };
-      el.innerHTML = html[state] || html.closed;
+      el.innerHTML = m[state] || m.closed;
     }
-
-    function stampTime(eod) {
+    function stamp(eod) {
       var ts = document.getElementById('live-ts');
-      if (ts) ts.textContent = (eod ? 'Close ' : 'Updated ') + etTime(!eod) + ' ET';
-      setIndicator(eod ? 'eod' : 'live');
+      if (ts) ts.textContent = (eod?'Close ':'Updated ') + etNow(!eod) + ' ET';
+      setInd(eod ? 'eod' : 'live');
     }
 
-    // ── DOM helpers ────────────────────────────────────────────────────────────
-    function fmt(n) {
-      return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    // ── Formatters ────────────────────────────────────────────────────────────
+    function fmtP(n){ return '$'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+    function fmtN(n,d){ return n.toFixed(d!=null?d:2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+    function autoFmt(p, bond){
+      if (bond)       return fmtN(p,2)+'%';
+      if (p>=10000)   return fmtN(p,0);
+      if (p>=1000)    return fmtN(p,1);
+      if (p>=10)      return fmtN(p,2);
+      return fmtN(p,4);
     }
 
-    function updateCard(pick, price) {
+    // ── Options P&L calculation ────────────────────────────────────────────────
+    // dS = signed underlying move (positive when trade is profitable).
+    // For a long call: dS > 0 means stock went up → option gains.
+    // Δ·dS is the first-order gain; ½·Γ·dS² captures convexity (always positive).
+    function calcPnl(pick, cur) {
+      var dS = pick.direction === 'short' ? pick.entry - cur : cur - pick.entry;
+      var stockPct = dS / pick.entry * 100;
+      if (pick.instrument === 'equity' || !pick.premium) {
+        return { pct: stockPct, stockPct: stockPct, isOpt: false };
+      }
+      var gain   = pick.delta * dS + 0.5 * pick.gamma * dS * dS;
+      var optPct = gain / pick.premium * 100;
+      return { pct: optPct, stockPct: stockPct, isOpt: true };
+    }
+
+    // ── Pick card DOM updater ─────────────────────────────────────────────────
+    var live = {};   // { id: latestPrice }
+
+    function updateCard(pick, cur) {
       var cpEl   = document.getElementById('cp-'      + pick.id);
       var pnlEl  = document.getElementById('pnl-'     + pick.id);
       var wrapEl = document.getElementById('cp-wrap-' + pick.id);
       var fillEl = document.getElementById('pfill-'   + pick.id);
       if (!cpEl) return;
-      var pct  = pick.direction === 'short'
-                   ? (pick.entry - price) / pick.entry * 100
-                   : (price - pick.entry) / pick.entry * 100;
-      var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
-      var sign = pct >= 0 ? '+' : '';
-      cpEl.textContent = fmt(price);
-      if (pnlEl)  { pnlEl.textContent = sign + pct.toFixed(1) + '%';
-                     pnlEl.className   = 'pnl-pill ' + cls; }
-      if (wrapEl)   wrapEl.className   = 'metric-val ' + cls;
+
+      var pnl  = calcPnl(pick, cur);
+      var pct  = pnl.pct;
+      var cls  = pct >  0.1 ? 'gain' : (pct < -0.1 ? 'loss' : 'flat');
+      var sign = pct >= 0   ? '+'   : '';
+
+      // Price display
+      cpEl.textContent = fmtP(cur);
+
+      // P&L pill — option-adjusted for options, plain stock % for equity
+      if (pnlEl) {
+        pnlEl.textContent = sign + pct.toFixed(1) + '%';
+        pnlEl.className   = 'pnl-pill ' + cls;
+      }
+      if (wrapEl) wrapEl.className = 'metric-val ' + cls;
+
+      // Options: update label + inject "underlying X%" context line
+      if (pnl.isOpt && wrapEl && wrapEl.parentElement) {
+        var metDiv = wrapEl.parentElement;
+
+        var lbl = metDiv.querySelector('label');
+        if (lbl && lbl.textContent.indexOf('Opt') === -1) {
+          lbl.textContent = 'Price · Opt P&L (est.)';
+        }
+
+        var undId = 'und-' + pick.id;
+        var undEl = document.getElementById(undId);
+        if (!undEl) {
+          undEl = document.createElement('div');
+          undEl.id = undId;
+          undEl.style.cssText = 'font-size:10px;color:var(--text-muted);margin-top:3px;'
+                              + 'font-family:"SF Mono",Consolas,monospace';
+          metDiv.appendChild(undEl);
+        }
+        var us = pnl.stockPct >= 0 ? '+' : '';
+        undEl.textContent = 'underlying ' + us + pnl.stockPct.toFixed(2) + '%';
+      }
+
+      // Progress bar tracks underlying price toward target (not option value)
       if (fillEl) {
-        var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
-        var moved = pick.direction === 'short' ? pick.entry - price      : price - pick.entry;
-        var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
+        var tot  = pick.direction==='short' ? pick.entry-pick.stop  : pick.target-pick.entry;
+        var mov  = pick.direction==='short' ? pick.entry-cur        : cur-pick.entry;
+        var w    = tot > 0 ? Math.max(0, Math.min(100, mov/tot*100)) : 0;
         fillEl.style.width = w.toFixed(1) + '%';
-        fillEl.className   = 'progress-fill ' + cls;
+        fillEl.className   = 'progress-fill ' + (mov >= 0 ? cls : 'loss');
       }
     }
 
-    // ── Unrealized P&L stat card (updates after each price fetch round) ─────────
-    // livePrices tracks the latest fetched price for each pick by id.
-    var livePrices = {};
-
-    function updateUnrealizedPnl() {
+    // ── Unrealized P&L stat card ──────────────────────────────────────────────
+    // Uses option-adjusted P&L for options picks, plain stock % for equity.
+    function updateStatCard() {
       var el = document.getElementById('unrealized-pnl-val');
-      if (!el || !PICKS || !PICKS.length) return;
+      if (!el) return;
       var total = 0, count = 0;
-      PICKS.forEach(function(pick) {
-        var price = livePrices[pick.id];
+      PICKS.forEach(function(p){
+        var price = live[p.id];
         if (price == null) return;
-        var pct = pick.direction === 'short'
-                    ? (pick.entry - price) / pick.entry * 100
-                    : (price - pick.entry) / pick.entry * 100;
-        total += pct;
+        total += calcPnl(p, price).pct;
         count++;
       });
-      if (count === 0) return;
+      if (!count) return;
       var avg  = total / count;
       var sign = avg >= 0 ? '+' : '';
-      var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
+      var cls  = avg >  0.1 ? 'gain' : (avg < -0.1 ? 'loss' : 'muted');
       el.textContent = sign + avg.toFixed(2) + '%';
       el.className   = 'stat-val ' + cls;
+
+      // Update label once to reflect options-adjusted nature
+      var card = el.parentElement;
+      if (card) {
+        var lbl = card.querySelector('.stat-lbl');
+        if (lbl && lbl.textContent.indexOf('Opt') === -1) {
+          lbl.textContent = 'Opt-Adj P&L (avg)';
+        }
+      }
     }
 
-    // ── Fetch prices: staggered per-ticker via allorigins.win + v8/chart ───────
-    // v8/chart confirmed working. Staggered 700ms so allorigins doesn't rate-limit.
-    function fetchPrices(eod) {
-      if (!PICKS || !PICKS.length) return;
-      var idx = 0, updated = 0;
-      function next() {
-        if (idx >= PICKS.length) {
-          if (updated > 0) {
-            updateUnrealizedPnl();   // refresh stat card after all tickers fetched
-            stampTime(eod);
-          }
-          return;
+    // ── Ticker strip DOM updater ──────────────────────────────────────────────
+    // querySelectorAll handles both copies of each item (infinite-scroll dupe).
+    function updateStrip(id, d, bond) {
+      document.querySelectorAll('[data-ts="'+id+'"]').forEach(function(item){
+        var v = item.querySelector('.t-val');
+        var c = item.querySelector('.t-chg');
+        if (v) v.textContent = autoFmt(d.price, bond);
+        if (c) {
+          var p = d.changePct, s = p>=0?'+':'';
+          c.textContent = s+p.toFixed(2)+'%';
+          c.className   = 't-chg '+(p>0.01?'up':(p<-0.01?'down':'flat'));
         }
-        var pick  = PICKS[idx++];
-        var yf    = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-                  + pick.ticker + '?interval=1m&range=1d';
-        var ao    = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yf);
-        fetch(ao)
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            var price = d.chart.result[0].meta.regularMarketPrice;
-            if (price) {
-              livePrices[pick.id] = price;  // store for P&L aggregation
-              updateCard(pick, price);
-              updated++;
-            }
+      });
+    }
+
+    // ── Fetch all picks in parallel ───────────────────────────────────────────
+    var lastOK = 0;
+
+    function refreshPicks(eod) {
+      var total = PICKS.length, done = 0, ok = 0;
+      PICKS.forEach(function(pick){
+        fetchPick(pick.ticker)
+          .then(function(d){
+            live[pick.id] = d.price;
+            updateCard(pick, d.price);
+            ok++;
           })
-          .catch(function() {})
-          .then(function() { setTimeout(next, 700); });
+          .catch(function(){})
+          .then(function(){
+            done++;
+            if (done < total) return;
+            if (ok > 0) { updateStatCard(); stamp(eod); lastOK = Date.now(); }
+            else        { setInd('stale'); }
+          });
+      });
+    }
+
+    // ── Fetch strip sequentially (low priority, avoids proxy hammering) ────────
+    function refreshStrip() {
+      var i = 0;
+      function next() {
+        if (i >= STRIP.length) return;
+        var s = STRIP[i++];
+        fetchStrip(s.yf)
+          .then(function(d){ updateStrip(s.id, d, s.bond); })
+          .catch(function(){})
+          .then(function(){ setTimeout(next, 250); });
       }
       next();
     }
 
-    // ── Main loop ──────────────────────────────────────────────────────────────
-    function tick() {
-      var open = isMarketOpen();
+    // ── Stale watcher: show orange warning if no update for 2+ min ─────────────
+    function watchStale() {
+      setInterval(function(){
+        if (isOpen() && lastOK && Date.now()-lastOK > 120000) setInd('stale');
+      }, 30000);
+    }
+
+    // ── Bootstrap ─────────────────────────────────────────────────────────────
+    function start() {
+      var open = isOpen();
+      setInd('fetch');
+      refreshPicks(!open);
+      refreshStrip();
+
       if (open) {
-        setIndicator('fetching');
-        fetchPrices(false);           // live — repeats every 30 s
-        setTimeout(tick, 30000);
-      } else {
-        // After hours: fetch once to show end-of-day prices, then stop polling
-        setIndicator('fetching');
-        fetchPrices(true);            // eod — runs once only
+        setInterval(function(){ refreshPicks(false); }, POLL_PICKS_MS);
+        setInterval(refreshStrip, POLL_STRIP_MS);
+        watchStale();
       }
+      // After hours: one end-of-day snapshot on load, then idle.
     }
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', tick);
+      document.addEventListener('DOMContentLoaded', start);
     } else {
-      tick();
+      start();
     }
   })();
   </script>
