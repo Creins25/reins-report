@@ -352,159 +352,254 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 }
 </style>
   <script>
-  // ── Price updater ─────────────────────────────────────────────────────────────
-  // Uses allorigins.win/raw + v8/chart (confirmed working in browser).
-  // During market hours: updates every 30 s, shows 🟢 LIVE PRICES.
-  // After hours / closed: fetches once on load to show end-of-day prices,
-  //   shows ⚫ CLOSED — End of Day.
-  // v7/quote batch endpoint avoided — requires Yahoo auth cookies in browser.
-  (function() {
-    var PICKS = [{"id": "1b9d59fe", "ticker": "META", "entry": 610.26, "direction": "long", "stop": 573.0, "target": 723.99}, {"id": "06cf565f", "ticker": "JPM", "entry": 306.38, "direction": "long", "stop": 291.0, "target": 352.54}, {"id": "23572ccd", "ticker": "NVDA", "entry": 215.33, "direction": "long", "stop": 201.0, "target": 258.99}, {"id": "8daf3257", "ticker": "AMZN", "entry": 266.32, "direction": "long", "stop": 250.0, "target": 315.28}];
+  (function () {
+  var PICKS = [{"id": "1b9d59fe", "ticker": "META", "entry": 610.26, "direction": "long", "stop": 573.0, "target": 723.99, "instrument": "call", "premium": 17.24, "delta": 0.46, "gamma": 0.0077, "strike": 620.0, "expiry": "2026-06-20"}, {"id": "06cf565f", "ticker": "JPM", "entry": 306.38, "direction": "long", "stop": 291.0, "target": 352.54, "instrument": "equity", "premium": 0.0, "delta": 1.0, "gamma": 0.0}, {"id": "23572ccd", "ticker": "NVDA", "entry": 215.33, "direction": "long", "stop": 201.0, "target": 258.99, "instrument": "call", "premium": 8.62, "delta": 0.465, "gamma": 0.0153, "strike": 220.0, "expiry": "2026-06-20"}, {"id": "8daf3257", "ticker": "AMZN", "entry": 266.32, "direction": "long", "stop": 250.0, "target": 315.28, "instrument": "call", "premium": 7.77, "delta": 0.47, "gamma": 0.0176, "strike": 270.0, "expiry": "2026-06-20"}];
 
-    // ── Market hours: Mon-Fri 9:30–16:00 ET ───────────────────────────────────
-    function isMarketOpen() {
-      var etStr = new Date().toLocaleString('en-US', {timeZone:'America/New_York'});
-      var et    = new Date(etStr);
-      var day   = et.getDay();
-      if (day === 0 || day === 6) return false;
-      var mins  = et.getHours() * 60 + et.getMinutes();
-      return mins >= 570 && mins < 960;
-    }
+  // CORS proxies — race simultaneously, first valid response wins
+  var PROXIES = [
+    function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) + '&_=' + Date.now(); },
+    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); }
+  ];
 
-    function etTime(secs) {
-      return new Date().toLocaleTimeString('en-US', {
-        timeZone:'America/New_York',
-        hour:'2-digit', minute:'2-digit', second: secs ? '2-digit' : undefined, hour12:true
+  function via(pfn, url) {
+    return fetch(pfn(url), {cache: 'no-store'}).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+  }
+
+  function raceProxies(url) {
+    return new Promise(function (resolve, reject) {
+      var done = false, errs = 0;
+      PROXIES.forEach(function (pfn) {
+        via(pfn, url)
+          .then(function (d) { if (!done) { done = true; resolve(d); } })
+          .catch(function () {
+            errs++;
+            if (errs === PROXIES.length && !done) { done = true; reject(new Error('all proxies failed')); }
+          });
       });
-    }
+    });
+  }
 
-    // ── Masthead indicator ─────────────────────────────────────────────────────
-    // state: 'live' | 'fetching' | 'closed' | 'eod'
-    function setIndicator(state) {
-      var el = document.getElementById('live-indicator');
-      if (!el) return;
-      var html = {
-        live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
-        fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices...</span>',
-        closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
-        eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
-      };
-      el.innerHTML = html[state] || html.closed;
-    }
+  // ── Market hours: Mon-Fri 9:30-16:00 ET ──────────────────────────────────
+  function isMarketOpen() {
+    var et  = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
+    var day = et.getDay();
+    if (day === 0 || day === 6) return false;
+    var m = et.getHours() * 60 + et.getMinutes();
+    return m >= 570 && m < 960;
+  }
 
-    function stampTime(eod) {
-      var ts = document.getElementById('live-ts');
-      if (ts) ts.textContent = (eod ? 'Close ' : 'Updated ') + etTime(!eod) + ' ET';
-      setIndicator(eod ? 'eod' : 'live');
-    }
+  function etTime(withSecs) {
+    return new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit',
+      second: withSecs ? '2-digit' : undefined, hour12: true
+    });
+  }
 
-    // ── DOM helpers ────────────────────────────────────────────────────────────
-    function fmt(n) {
-      return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
+  // ── Status indicator ──────────────────────────────────────────────────────
+  function setIndicator(state) {
+    var el = document.getElementById('live-indicator');
+    if (!el) return;
+    var map = {
+      live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
+      fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
+      closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
+      eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
+    };
+    el.innerHTML = map[state] || map.closed;
+  }
 
-    function updateCard(pick, price) {
-      var cpEl   = document.getElementById('cp-'      + pick.id);
-      var pnlEl  = document.getElementById('pnl-'     + pick.id);
-      var wrapEl = document.getElementById('cp-wrap-' + pick.id);
-      var fillEl = document.getElementById('pfill-'   + pick.id);
-      if (!cpEl) return;
-      var pct  = pick.direction === 'short'
-                   ? (pick.entry - price) / pick.entry * 100
-                   : (price - pick.entry) / pick.entry * 100;
-      var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
-      var sign = pct >= 0 ? '+' : '';
-      cpEl.textContent = fmt(price);
-      if (pnlEl)  { pnlEl.textContent = sign + pct.toFixed(1) + '%';
-                     pnlEl.className   = 'pnl-pill ' + cls; }
-      if (wrapEl)   wrapEl.className   = 'metric-val ' + cls;
-      if (fillEl) {
-        var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
-        var moved = pick.direction === 'short' ? pick.entry - price      : price - pick.entry;
-        var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
-        fillEl.style.width = w.toFixed(1) + '%';
-        fillEl.className   = 'progress-fill ' + cls;
-      }
-    }
+  function stampTime(eod) {
+    var ts = document.getElementById('live-ts');
+    if (ts) ts.textContent = (eod ? 'Close ' : 'Updated ') + etTime(!eod) + ' ET';
+    setIndicator(eod ? 'eod' : 'live');
+  }
 
-    // ── Unrealized P&L stat card (updates after each price fetch round) ─────────
-    // livePrices tracks the latest fetched price for each pick by id.
-    var livePrices = {};
+  // ── Formatting helpers ────────────────────────────────────────────────────
+  function fmt(n) {
+    return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
 
-    function updateUnrealizedPnl() {
-      var el = document.getElementById('unrealized-pnl-val');
-      if (!el || !PICKS || !PICKS.length) return;
-      var total = 0, count = 0;
-      PICKS.forEach(function(pick) {
-        var price = livePrices[pick.id];
-        if (price == null) return;
-        var pct = pick.direction === 'short'
-                    ? (pick.entry - price) / pick.entry * 100
-                    : (price - pick.entry) / pick.entry * 100;
-        total += pct;
-        count++;
-      });
-      if (count === 0) return;
-      var avg  = total / count;
-      var sign = avg >= 0 ? '+' : '';
-      var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
-      el.textContent = sign + avg.toFixed(2) + '%';
-      el.className   = 'stat-val ' + cls;
-    }
+  function fmtContract(n) {
+    // e.g. +$173/contract or -$23/contract
+    var sign = n >= 0 ? '+$' : '-$';
+    return sign + Math.abs(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/contract';
+  }
 
-    // ── Fetch prices: staggered per-ticker via allorigins.win + v8/chart ───────
-    // v8/chart confirmed working. Staggered 700ms so allorigins doesn't rate-limit.
-    function fetchPrices(eod) {
-      if (!PICKS || !PICKS.length) return;
-      var idx = 0, updated = 0;
-      function next() {
-        if (idx >= PICKS.length) {
-          if (updated > 0) {
-            updateUnrealizedPnl();   // refresh stat card after all tickers fetched
-            stampTime(eod);
-          }
-          return;
+  // ── Fetch live option premium from Yahoo options chain ────────────────────
+  // P&L for options = (current_premium - entry_premium) * 100
+  // Each contract covers 100 shares of the underlying.
+  function fetchOptionPrice(pick) {
+    if (!pick.instrument || pick.instrument === 'equity' || !pick.strike || !pick.expiry)
+      return Promise.resolve(null);
+
+    var expiryTs = Math.floor(new Date(pick.expiry + 'T00:00:00Z').getTime() / 1000);
+    var url = 'https://query1.finance.yahoo.com/v7/finance/options/' + pick.ticker
+            + '?date=' + expiryTs + '&_=' + Date.now();
+
+    return raceProxies(url)
+      .then(function (d) {
+        var res = d && d.optionChain && d.optionChain.result && d.optionChain.result[0];
+        if (!res) throw new Error('no result');
+        var opts  = res.options || [];
+        if (!opts.length) throw new Error('no options');
+        var chain = opts[0];
+        var contracts = pick.instrument === 'put' ? (chain.puts || []) : (chain.calls || []);
+        if (!contracts.length) throw new Error('no contracts');
+
+        // Find exact strike match, then nearest-strike fallback
+        var contract = null;
+        for (var j = 0; j < contracts.length; j++) {
+          if (Math.abs(contracts[j].strike - pick.strike) < 0.01) { contract = contracts[j]; break; }
         }
-        var pick  = PICKS[idx++];
-        var yf    = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-                  + pick.ticker + '?interval=1m&range=1d';
-        var ao    = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yf);
-        fetch(ao)
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            var price = d.chart.result[0].meta.regularMarketPrice;
-            if (price) {
-              livePrices[pick.id] = price;  // store for P&L aggregation
-              updateCard(pick, price);
-              updated++;
-            }
-          })
-          .catch(function() {})
-          .then(function() { setTimeout(next, 700); });
-      }
-      next();
-    }
+        if (!contract) {
+          var best = null, bestDiff = Infinity;
+          for (var k = 0; k < contracts.length; k++) {
+            var diff = Math.abs(contracts[k].strike - pick.strike);
+            if (diff < bestDiff) { bestDiff = diff; best = contracts[k]; }
+          }
+          contract = best;
+        }
+        if (!contract) throw new Error('no contract found');
 
-    // ── Main loop ──────────────────────────────────────────────────────────────
-    function tick() {
-      var open = isMarketOpen();
-      if (open) {
-        setIndicator('fetching');
-        fetchPrices(false);           // live — repeats every 30 s
-        setTimeout(tick, 30000);
-      } else {
-        // After hours: fetch once to show end-of-day prices, then stop polling
-        setIndicator('fetching');
-        fetchPrices(true);            // eod — runs once only
-      }
-    }
+        // Use bid/ask midpoint; fall back to lastPrice
+        var bid = contract.bid || 0, ask = contract.ask || 0;
+        var mid = (bid > 0 && ask > 0) ? (bid + ask) / 2 : (contract.lastPrice || 0);
+        if (!mid || mid <= 0) throw new Error('no valid price');
+        return mid;
+      })
+      .catch(function () { return null; });
+  }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', tick);
+  // ── Compute P&L ──────────────────────────────────────────────────────────
+  function computePnl(pick, stockPrice, optionMid) {
+    var isOpt = pick.instrument && pick.instrument !== 'equity';
+    // Options P&L: dollar = (current_premium - entry_premium) * 100 per contract
+    if (isOpt && optionMid != null && optionMid > 0 && pick.premium > 0) {
+      var premChange = optionMid - pick.premium;
+      return {
+        pct:         premChange / pick.premium * 100,
+        dollar:      premChange * 100,
+        isOpt:       true,
+        isReal:      true,
+        currentPrem: optionMid
+      };
+    }
+    // Equity P&L (or options fallback when premium fetch failed)
+    var pct = pick.direction === 'short'
+      ? (pick.entry - stockPrice) / pick.entry * 100
+      : (stockPrice - pick.entry) / pick.entry * 100;
+    return { pct: pct, dollar: null, isOpt: isOpt, isReal: !isOpt };
+  }
+
+  // ── Update one pick card ──────────────────────────────────────────────────
+  function updateCard(pick, stockPrice, optionMid) {
+    var cpEl   = document.getElementById('cp-'      + pick.id);
+    var pnlEl  = document.getElementById('pnl-'     + pick.id);
+    var wrapEl = document.getElementById('cp-wrap-' + pick.id);
+    var fillEl = document.getElementById('pfill-'   + pick.id);
+    if (!cpEl) return;
+
+    var pnl  = computePnl(pick, stockPrice, optionMid);
+    var pct  = pnl.pct;
+    var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
+    var sign = pct >= 0 ? '+' : '';
+
+    cpEl.textContent = fmt(stockPrice);
+
+    if (pnlEl) {
+      var label = sign + pct.toFixed(1) + '%';
+      if (pnl.isOpt && pnl.dollar != null) {
+        label += '  (' + fmtContract(pnl.dollar) + ')';
+      }
+      pnlEl.textContent = label;
+      pnlEl.className   = 'pnl-pill ' + cls;
+    }
+    if (wrapEl) wrapEl.className = 'metric-val ' + cls;
+    if (fillEl) {
+      var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
+      var moved = pick.direction === 'short' ? pick.entry - stockPrice : stockPrice - pick.entry;
+      var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
+      fillEl.style.width = w.toFixed(1) + '%';
+      fillEl.className   = 'progress-fill ' + cls;
+    }
+  }
+
+  // ── Aggregate unrealized P&L stat card ───────────────────────────────────
+  var livePrices  = {};
+  var liveOptions = {};
+
+  function updateUnrealizedPnl() {
+    var el = document.getElementById('unrealized-pnl-val');
+    if (!el || !PICKS || !PICKS.length) return;
+    var total = 0, count = 0;
+    PICKS.forEach(function (pick) {
+      var sp = livePrices[pick.id];
+      if (sp == null) return;
+      var op  = liveOptions[pick.id] != null ? liveOptions[pick.id] : null;
+      var pnl = computePnl(pick, sp, op);
+      total  += pnl.pct;
+      count++;
+    });
+    if (!count) return;
+    var avg  = total / count;
+    var sign = avg >= 0 ? '+' : '';
+    var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
+    el.textContent = sign + avg.toFixed(2) + '%';
+    el.className   = 'stat-val ' + cls;
+  }
+
+  // ── Fetch all prices (stock + options) ────────────────────────────────────
+  function fetchPrices(eod) {
+    if (!PICKS || !PICKS.length) return;
+    var idx = 0, updated = 0;
+
+    function next() {
+      if (idx >= PICKS.length) {
+        if (updated > 0) { updateUnrealizedPnl(); stampTime(eod); }
+        return;
+      }
+      var pick = PICKS[idx++];
+      var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+               + pick.ticker + '?interval=1m&range=1d&_=' + Date.now();
+
+      raceProxies(yf)
+        .then(function (d) {
+          var sp = d.chart.result[0].meta.regularMarketPrice;
+          if (!sp) throw new Error('no price');
+          livePrices[pick.id] = sp;
+          return fetchOptionPrice(pick).then(function (optMid) {
+            if (optMid != null) liveOptions[pick.id] = optMid;
+            updateCard(pick, sp, liveOptions[pick.id] != null ? liveOptions[pick.id] : null);
+            updated++;
+          });
+        })
+        .catch(function () {})
+        .then(function () { setTimeout(next, 700); });
+    }
+    next();
+  }
+
+  // ── Main loop ─────────────────────────────────────────────────────────────
+  function tick() {
+    if (isMarketOpen()) {
+      setIndicator('fetching');
+      fetchPrices(false);
+      setTimeout(tick, 30000);
     } else {
-      tick();
+      setIndicator('fetching');
+      fetchPrices(true);
     }
-  })();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tick);
+  } else {
+    tick();
+  }
+})();
   </script>
 </head>
 <body>
@@ -711,7 +806,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,35.8 32.3,46.6 50.7,47.8 69.0,44.2 87.4,53.7 105.7,44.1 124.1,41.9 142.4,46.3 160.8,47.7 179.1,82.5 197.4,84.5 215.8,83.4 234.1,86.8 252.5,81.9 270.8,79.5 289.2,83.9 307.5,90.5 325.9,88.0 344.2,79.7 362.6,78.6 380.9,81.1 399.2,83.0 417.6,88.2 435.9,86.7 454.3,85.3 472.6,83.5 491.0,82.3 509.3,68.3 527.7,68.3 546.0,71.9 546.0,108" fill="url(#fill-META)"/>
+  <polygon points="14.0,108 14.0,35.8 32.3,46.6 50.7,47.8 69.0,44.2 87.4,53.7 105.7,44.1 124.1,41.9 142.4,46.3 160.8,47.7 179.1,82.5 197.4,84.5 215.8,83.4 234.1,86.8 252.5,81.9 270.8,79.5 289.2,83.9 307.5,90.5 325.9,88.0 344.2,79.7 362.6,78.6 380.9,81.1 399.2,83.0 417.6,88.2 435.9,86.7 454.3,85.3 472.6,83.5 491.0,82.3 509.3,68.3 527.7,68.3 546.0,70.0 546.0,108" fill="url(#fill-META)"/>
   <!-- Target line -->
   <line x1="14" y1="14.2" x2="546" y2="14.2"
         stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
@@ -728,10 +823,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="106.3" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$573</text>
   <!-- Price line -->
-  <polyline points="14.0,35.8 32.3,46.6 50.7,47.8 69.0,44.2 87.4,53.7 105.7,44.1 124.1,41.9 142.4,46.3 160.8,47.7 179.1,82.5 197.4,84.5 215.8,83.4 234.1,86.8 252.5,81.9 270.8,79.5 289.2,83.9 307.5,90.5 325.9,88.0 344.2,79.7 362.6,78.6 380.9,81.1 399.2,83.0 417.6,88.2 435.9,86.7 454.3,85.3 472.6,83.5 491.0,82.3 509.3,68.3 527.7,68.3 546.0,71.9" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,35.8 32.3,46.6 50.7,47.8 69.0,44.2 87.4,53.7 105.7,44.1 124.1,41.9 142.4,46.3 160.8,47.7 179.1,82.5 197.4,84.5 215.8,83.4 234.1,86.8 252.5,81.9 270.8,79.5 289.2,83.9 307.5,90.5 325.9,88.0 344.2,79.7 362.6,78.6 380.9,81.1 399.2,83.0 417.6,88.2 435.9,86.7 454.3,85.3 472.6,83.5 491.0,82.3 509.3,68.3 527.7,68.3 546.0,70.0" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="71.9" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="70.0" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $724</span>
@@ -814,7 +909,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,77.2 32.3,67.3 50.7,73.2 69.0,73.2 87.4,75.2 105.7,80.2 124.1,75.3 142.4,75.5 160.8,78.8 179.1,72.9 197.4,74.0 215.8,81.2 234.1,78.6 252.5,70.4 270.8,83.2 289.2,89.4 307.5,92.5 325.9,85.3 344.2,92.1 362.6,92.6 380.9,95.7 399.2,91.4 417.6,98.9 435.9,89.6 454.3,88.1 472.6,83.0 491.0,82.5 509.3,93.6 527.7,97.3 546.0,94.6 546.0,108" fill="url(#fill-JPM)"/>
+  <polygon points="14.0,108 14.0,77.2 32.3,67.3 50.7,73.2 69.0,73.2 87.4,75.2 105.7,80.2 124.1,75.3 142.4,75.5 160.8,78.8 179.1,72.9 197.4,74.0 215.8,81.2 234.1,78.6 252.5,70.4 270.8,83.2 289.2,89.4 307.5,92.5 325.9,85.3 344.2,92.1 362.6,92.6 380.9,95.7 399.2,91.4 417.6,98.9 435.9,89.6 454.3,88.1 472.6,83.0 491.0,82.5 509.3,93.6 527.7,97.3 546.0,93.5 546.0,108" fill="url(#fill-JPM)"/>
   <!-- Target line -->
   <line x1="14" y1="14.6" x2="546" y2="14.6"
         stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
@@ -831,10 +926,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="105.8" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$291</text>
   <!-- Price line -->
-  <polyline points="14.0,77.2 32.3,67.3 50.7,73.2 69.0,73.2 87.4,75.2 105.7,80.2 124.1,75.3 142.4,75.5 160.8,78.8 179.1,72.9 197.4,74.0 215.8,81.2 234.1,78.6 252.5,70.4 270.8,83.2 289.2,89.4 307.5,92.5 325.9,85.3 344.2,92.1 362.6,92.6 380.9,95.7 399.2,91.4 417.6,98.9 435.9,89.6 454.3,88.1 472.6,83.0 491.0,82.5 509.3,93.6 527.7,97.3 546.0,94.6" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,77.2 32.3,67.3 50.7,73.2 69.0,73.2 87.4,75.2 105.7,80.2 124.1,75.3 142.4,75.5 160.8,78.8 179.1,72.9 197.4,74.0 215.8,81.2 234.1,78.6 252.5,70.4 270.8,83.2 289.2,89.4 307.5,92.5 325.9,85.3 344.2,92.1 362.6,92.6 380.9,95.7 399.2,91.4 417.6,98.9 435.9,89.6 454.3,88.1 472.6,83.0 491.0,82.5 509.3,93.6 527.7,97.3 546.0,93.5" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="94.6" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="93.5" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $353</span>
@@ -978,7 +1073,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,98.9 32.3,98.3 50.7,101.5 69.0,97.7 87.4,101.9 105.7,89.1 124.1,76.7 142.4,81.8 160.8,87.6 179.1,102.0 197.4,103.7 215.8,103.6 234.1,106.5 252.5,89.8 270.8,84.3 289.2,78.8 307.5,72.5 325.9,70.6 344.2,63.1 362.6,48.4 380.9,63.8 399.2,68.3 417.6,70.8 435.9,66.6 454.3,72.4 472.6,78.6 491.0,79.3 509.3,82.7 527.7,80.2 546.0,76.2 546.0,108" fill="url(#fill-NVDA)"/>
+  <polygon points="14.0,108 14.0,98.9 32.3,98.3 50.7,101.5 69.0,97.7 87.4,101.9 105.7,89.1 124.1,76.7 142.4,81.8 160.8,87.6 179.1,102.0 197.4,103.7 215.8,103.6 234.1,106.5 252.5,89.8 270.8,84.3 289.2,78.8 307.5,72.5 325.9,70.6 344.2,63.1 362.6,48.4 380.9,63.8 399.2,68.3 417.6,70.8 435.9,66.6 454.3,72.4 472.6,78.6 491.0,79.3 509.3,82.7 527.7,80.2 546.0,84.8 546.0,108" fill="url(#fill-NVDA)"/>
   <!-- Target line -->
   <line x1="14" y1="13.9" x2="546" y2="13.9"
         stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
@@ -995,10 +1090,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="99.9" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$201</text>
   <!-- Price line -->
-  <polyline points="14.0,98.9 32.3,98.3 50.7,101.5 69.0,97.7 87.4,101.9 105.7,89.1 124.1,76.7 142.4,81.8 160.8,87.6 179.1,102.0 197.4,103.7 215.8,103.6 234.1,106.5 252.5,89.8 270.8,84.3 289.2,78.8 307.5,72.5 325.9,70.6 344.2,63.1 362.6,48.4 380.9,63.8 399.2,68.3 417.6,70.8 435.9,66.6 454.3,72.4 472.6,78.6 491.0,79.3 509.3,82.7 527.7,80.2 546.0,76.2" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,98.9 32.3,98.3 50.7,101.5 69.0,97.7 87.4,101.9 105.7,89.1 124.1,76.7 142.4,81.8 160.8,87.6 179.1,102.0 197.4,103.7 215.8,103.6 234.1,106.5 252.5,89.8 270.8,84.3 289.2,78.8 307.5,72.5 325.9,70.6 344.2,63.1 362.6,48.4 380.9,63.8 399.2,68.3 417.6,70.8 435.9,66.6 454.3,72.4 472.6,78.6 491.0,79.3 509.3,82.7 527.7,80.2 546.0,84.8" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="76.2" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="84.8" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $259</span>
@@ -1142,7 +1237,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,103.2 32.3,106.3 50.7,104.1 69.0,96.6 87.4,96.9 105.7,84.7 124.1,88.6 142.4,90.6 160.8,86.0 179.1,83.2 197.4,78.8 215.8,73.6 234.1,71.5 252.5,69.6 270.8,74.8 289.2,72.7 307.5,77.8 325.9,82.2 344.2,76.2 362.6,80.3 380.9,84.5 399.2,83.5 417.6,91.1 435.9,83.3 454.3,78.5 472.6,81.5 491.0,82.9 509.3,73.9 527.7,70.9 546.0,75.0 546.0,108" fill="url(#fill-AMZN)"/>
+  <polygon points="14.0,108 14.0,103.2 32.3,106.3 50.7,104.1 69.0,96.6 87.4,96.9 105.7,84.7 124.1,88.6 142.4,90.6 160.8,86.0 179.1,83.2 197.4,78.8 215.8,73.6 234.1,71.5 252.5,69.6 270.8,74.8 289.2,72.7 307.5,77.8 325.9,82.2 344.2,76.2 362.6,80.3 380.9,84.5 399.2,83.5 417.6,91.1 435.9,83.3 454.3,78.5 472.6,81.5 491.0,82.9 509.3,73.9 527.7,70.9 546.0,75.5 546.0,108" fill="url(#fill-AMZN)"/>
   <!-- Target line -->
   <line x1="14" y1="14.2" x2="546" y2="14.2"
         stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
@@ -1159,10 +1254,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="103.9" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$250</text>
   <!-- Price line -->
-  <polyline points="14.0,103.2 32.3,106.3 50.7,104.1 69.0,96.6 87.4,96.9 105.7,84.7 124.1,88.6 142.4,90.6 160.8,86.0 179.1,83.2 197.4,78.8 215.8,73.6 234.1,71.5 252.5,69.6 270.8,74.8 289.2,72.7 307.5,77.8 325.9,82.2 344.2,76.2 362.6,80.3 380.9,84.5 399.2,83.5 417.6,91.1 435.9,83.3 454.3,78.5 472.6,81.5 491.0,82.9 509.3,73.9 527.7,70.9 546.0,75.0" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,103.2 32.3,106.3 50.7,104.1 69.0,96.6 87.4,96.9 105.7,84.7 124.1,88.6 142.4,90.6 160.8,86.0 179.1,83.2 197.4,78.8 215.8,73.6 234.1,71.5 252.5,69.6 270.8,74.8 289.2,72.7 307.5,77.8 325.9,82.2 344.2,76.2 362.6,80.3 380.9,84.5 399.2,83.5 417.6,91.1 435.9,83.3 454.3,78.5 472.6,81.5 491.0,82.9 509.3,73.9 527.7,70.9 546.0,75.5" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="75.0" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="75.5" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $315</span>

@@ -371,6 +371,257 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 }
 """
 
+# ── Price updater v4 (live option premium × 100 P&L) ─────────────────────────────────────────────────────────────────────────────────────
+# __PICKS_JSON__ is replaced at build time with the JSON-serialised picks array.
+SCRIPT_V4 = r'''(function () {
+  var PICKS = __PICKS_JSON__;
+
+  // CORS proxies — race simultaneously, first valid response wins
+  var PROXIES = [
+    function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) + '&_=' + Date.now(); },
+    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); }
+  ];
+
+  function via(pfn, url) {
+    return fetch(pfn(url), {cache: 'no-store'}).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+  }
+
+  function raceProxies(url) {
+    return new Promise(function (resolve, reject) {
+      var done = false, errs = 0;
+      PROXIES.forEach(function (pfn) {
+        via(pfn, url)
+          .then(function (d) { if (!done) { done = true; resolve(d); } })
+          .catch(function () {
+            errs++;
+            if (errs === PROXIES.length && !done) { done = true; reject(new Error('all proxies failed')); }
+          });
+      });
+    });
+  }
+
+  // ── Market hours: Mon-Fri 9:30-16:00 ET ──────────────────────────────────
+  function isMarketOpen() {
+    var et  = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
+    var day = et.getDay();
+    if (day === 0 || day === 6) return false;
+    var m = et.getHours() * 60 + et.getMinutes();
+    return m >= 570 && m < 960;
+  }
+
+  function etTime(withSecs) {
+    return new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit',
+      second: withSecs ? '2-digit' : undefined, hour12: true
+    });
+  }
+
+  // ── Status indicator ──────────────────────────────────────────────────────
+  function setIndicator(state) {
+    var el = document.getElementById('live-indicator');
+    if (!el) return;
+    var map = {
+      live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
+      fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
+      closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
+      eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
+    };
+    el.innerHTML = map[state] || map.closed;
+  }
+
+  function stampTime(eod) {
+    var ts = document.getElementById('live-ts');
+    if (ts) ts.textContent = (eod ? 'Close ' : 'Updated ') + etTime(!eod) + ' ET';
+    setIndicator(eod ? 'eod' : 'live');
+  }
+
+  // ── Formatting helpers ────────────────────────────────────────────────────
+  function fmt(n) {
+    return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function fmtContract(n) {
+    // e.g. +$173/contract or -$23/contract
+    var sign = n >= 0 ? '+$' : '-$';
+    return sign + Math.abs(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/contract';
+  }
+
+  // ── Fetch live option premium from Yahoo options chain ────────────────────
+  // P&L for options = (current_premium - entry_premium) * 100
+  // Each contract covers 100 shares of the underlying.
+  function fetchOptionPrice(pick) {
+    if (!pick.instrument || pick.instrument === 'equity' || !pick.strike || !pick.expiry)
+      return Promise.resolve(null);
+
+    var expiryTs = Math.floor(new Date(pick.expiry + 'T00:00:00Z').getTime() / 1000);
+    var url = 'https://query1.finance.yahoo.com/v7/finance/options/' + pick.ticker
+            + '?date=' + expiryTs + '&_=' + Date.now();
+
+    return raceProxies(url)
+      .then(function (d) {
+        var res = d && d.optionChain && d.optionChain.result && d.optionChain.result[0];
+        if (!res) throw new Error('no result');
+        var opts  = res.options || [];
+        if (!opts.length) throw new Error('no options');
+        var chain = opts[0];
+        var contracts = pick.instrument === 'put' ? (chain.puts || []) : (chain.calls || []);
+        if (!contracts.length) throw new Error('no contracts');
+
+        // Find exact strike match, then nearest-strike fallback
+        var contract = null;
+        for (var j = 0; j < contracts.length; j++) {
+          if (Math.abs(contracts[j].strike - pick.strike) < 0.01) { contract = contracts[j]; break; }
+        }
+        if (!contract) {
+          var best = null, bestDiff = Infinity;
+          for (var k = 0; k < contracts.length; k++) {
+            var diff = Math.abs(contracts[k].strike - pick.strike);
+            if (diff < bestDiff) { bestDiff = diff; best = contracts[k]; }
+          }
+          contract = best;
+        }
+        if (!contract) throw new Error('no contract found');
+
+        // Use bid/ask midpoint; fall back to lastPrice
+        var bid = contract.bid || 0, ask = contract.ask || 0;
+        var mid = (bid > 0 && ask > 0) ? (bid + ask) / 2 : (contract.lastPrice || 0);
+        if (!mid || mid <= 0) throw new Error('no valid price');
+        return mid;
+      })
+      .catch(function () { return null; });
+  }
+
+  // ── Compute P&L ──────────────────────────────────────────────────────────
+  function computePnl(pick, stockPrice, optionMid) {
+    var isOpt = pick.instrument && pick.instrument !== 'equity';
+    // Options P&L: dollar = (current_premium - entry_premium) * 100 per contract
+    if (isOpt && optionMid != null && optionMid > 0 && pick.premium > 0) {
+      var premChange = optionMid - pick.premium;
+      return {
+        pct:         premChange / pick.premium * 100,
+        dollar:      premChange * 100,
+        isOpt:       true,
+        isReal:      true,
+        currentPrem: optionMid
+      };
+    }
+    // Equity P&L (or options fallback when premium fetch failed)
+    var pct = pick.direction === 'short'
+      ? (pick.entry - stockPrice) / pick.entry * 100
+      : (stockPrice - pick.entry) / pick.entry * 100;
+    return { pct: pct, dollar: null, isOpt: isOpt, isReal: !isOpt };
+  }
+
+  // ── Update one pick card ──────────────────────────────────────────────────
+  function updateCard(pick, stockPrice, optionMid) {
+    var cpEl   = document.getElementById('cp-'      + pick.id);
+    var pnlEl  = document.getElementById('pnl-'     + pick.id);
+    var wrapEl = document.getElementById('cp-wrap-' + pick.id);
+    var fillEl = document.getElementById('pfill-'   + pick.id);
+    if (!cpEl) return;
+
+    var pnl  = computePnl(pick, stockPrice, optionMid);
+    var pct  = pnl.pct;
+    var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
+    var sign = pct >= 0 ? '+' : '';
+
+    cpEl.textContent = fmt(stockPrice);
+
+    if (pnlEl) {
+      var label = sign + pct.toFixed(1) + '%';
+      if (pnl.isOpt && pnl.dollar != null) {
+        label += '  (' + fmtContract(pnl.dollar) + ')';
+      }
+      pnlEl.textContent = label;
+      pnlEl.className   = 'pnl-pill ' + cls;
+    }
+    if (wrapEl) wrapEl.className = 'metric-val ' + cls;
+    if (fillEl) {
+      var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
+      var moved = pick.direction === 'short' ? pick.entry - stockPrice : stockPrice - pick.entry;
+      var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
+      fillEl.style.width = w.toFixed(1) + '%';
+      fillEl.className   = 'progress-fill ' + cls;
+    }
+  }
+
+  // ── Aggregate unrealized P&L stat card ───────────────────────────────────
+  var livePrices  = {};
+  var liveOptions = {};
+
+  function updateUnrealizedPnl() {
+    var el = document.getElementById('unrealized-pnl-val');
+    if (!el || !PICKS || !PICKS.length) return;
+    var total = 0, count = 0;
+    PICKS.forEach(function (pick) {
+      var sp = livePrices[pick.id];
+      if (sp == null) return;
+      var op  = liveOptions[pick.id] != null ? liveOptions[pick.id] : null;
+      var pnl = computePnl(pick, sp, op);
+      total  += pnl.pct;
+      count++;
+    });
+    if (!count) return;
+    var avg  = total / count;
+    var sign = avg >= 0 ? '+' : '';
+    var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
+    el.textContent = sign + avg.toFixed(2) + '%';
+    el.className   = 'stat-val ' + cls;
+  }
+
+  // ── Fetch all prices (stock + options) ────────────────────────────────────
+  function fetchPrices(eod) {
+    if (!PICKS || !PICKS.length) return;
+    var idx = 0, updated = 0;
+
+    function next() {
+      if (idx >= PICKS.length) {
+        if (updated > 0) { updateUnrealizedPnl(); stampTime(eod); }
+        return;
+      }
+      var pick = PICKS[idx++];
+      var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+               + pick.ticker + '?interval=1m&range=1d&_=' + Date.now();
+
+      raceProxies(yf)
+        .then(function (d) {
+          var sp = d.chart.result[0].meta.regularMarketPrice;
+          if (!sp) throw new Error('no price');
+          livePrices[pick.id] = sp;
+          return fetchOptionPrice(pick).then(function (optMid) {
+            if (optMid != null) liveOptions[pick.id] = optMid;
+            updateCard(pick, sp, liveOptions[pick.id] != null ? liveOptions[pick.id] : null);
+            updated++;
+          });
+        })
+        .catch(function () {})
+        .then(function () { setTimeout(next, 700); });
+    }
+    next();
+  }
+
+  // ── Main loop ─────────────────────────────────────────────────────────────
+  function tick() {
+    if (isMarketOpen()) {
+      setIndicator('fetching');
+      fetchPrices(false);
+      setTimeout(tick, 30000);
+    } else {
+      setIndicator('fetching');
+      fetchPrices(true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tick);
+  } else {
+    tick();
+  }
+})();'''
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _pnl_class(val) -> str:
@@ -1010,22 +1261,46 @@ def build_site(week_str: str | None = None) -> Path:
         stats = {"total_picks":0,"open_picks":0,"closed_picks":0,
                  "win_rate":None,"avg_winner":None,"avg_loser":None}
 
-    # Build picks JSON for the client-side live-price updater
+    # Build picks JSON for the client-side v4 live-price updater
+    # Options picks include strike/expiry so the browser can fetch live premium prices.
+    # P&L for options = (current_premium - entry_premium) * 100 per contract.
+    # Equity picks fall back to stock-price P&L.
+    def _sfloat(val, default=0.0):
+        """Safe float: converts NaN/None/invalid → default."""
+        try:
+            v = float(val)
+            return default if (v != v) else v   # NaN test: NaN != NaN is True
+        except (TypeError, ValueError):
+            return default
+
     _picks_js_list = []
     if not open_picks.empty:
         for _, _pr in open_picks.iterrows():
             try:
-                _picks_js_list.append({
-                    "id":        str(_pr.get("pick_id","")).replace("-",""),
-                    "ticker":    str(_pr.get("ticker","")),
-                    "entry":     float(_pr.get("entry_price", 0)),
-                    "direction": str(_pr.get("direction","long")).lower(),
-                    "stop":      float(_pr.get("stop_price",  0)),
-                    "target":    float(_pr.get("target_price", 0)),
-                })
+                _instr = str(_pr.get("instrument_type", "equity")).lower()
+                _is_opt = _instr in ("call", "put")
+                _p = {
+                    "id":         str(_pr.get("pick_id", "")).replace("-", ""),
+                    "ticker":     str(_pr.get("ticker", "")),
+                    "entry":      _sfloat(_pr.get("entry_price"),  0.0),
+                    "direction":  str(_pr.get("direction", "long")).lower(),
+                    "stop":       _sfloat(_pr.get("stop_price"),   0.0),
+                    "target":     _sfloat(_pr.get("target_price"), 0.0),
+                    "instrument": _instr,
+                    "premium":    _sfloat(_pr.get("premium_paid"), 0.0),
+                    "delta":      _sfloat(_pr.get("delta"),  1.0 if not _is_opt else 0.5),
+                    "gamma":      _sfloat(_pr.get("gamma"),  0.0),
+                }
+                if _is_opt:
+                    _p["strike"] = _sfloat(_pr.get("strike"), 0.0)
+                    _exp = str(_pr.get("expiry", "")).strip()
+                    if _exp and len(_exp) >= 10:
+                        _p["expiry"] = _exp[:10]
+                _picks_js_list.append(_p)
             except Exception:
                 pass
-    picks_json = json.dumps(_picks_js_list)
+    picks_json  = json.dumps(_picks_js_list)           # NaN values are now gone — clean JSON
+    script_html = SCRIPT_V4.replace('__PICKS_JSON__', picks_json)
 
     # Prose — fall back to auto-generated narrative if not written yet
     written_narrative = _read_section(nl_text, "Narrative")
@@ -1079,159 +1354,7 @@ def build_site(week_str: str | None = None) -> Path:
   <title>The Reins Report · {week_lbl}</title>
   <style>{CSS}</style>
   <script>
-  // ── Price updater ─────────────────────────────────────────────────────────────
-  // Uses allorigins.win/raw + v8/chart (confirmed working in browser).
-  // During market hours: updates every 30 s, shows 🟢 LIVE PRICES.
-  // After hours / closed: fetches once on load to show end-of-day prices,
-  //   shows ⚫ CLOSED — End of Day.
-  // v7/quote batch endpoint avoided — requires Yahoo auth cookies in browser.
-  (function() {{
-    var PICKS = {picks_json};
-
-    // ── Market hours: Mon-Fri 9:30–16:00 ET ───────────────────────────────────
-    function isMarketOpen() {{
-      var etStr = new Date().toLocaleString('en-US', {{timeZone:'America/New_York'}});
-      var et    = new Date(etStr);
-      var day   = et.getDay();
-      if (day === 0 || day === 6) return false;
-      var mins  = et.getHours() * 60 + et.getMinutes();
-      return mins >= 570 && mins < 960;
-    }}
-
-    function etTime(secs) {{
-      return new Date().toLocaleTimeString('en-US', {{
-        timeZone:'America/New_York',
-        hour:'2-digit', minute:'2-digit', second: secs ? '2-digit' : undefined, hour12:true
-      }});
-    }}
-
-    // ── Masthead indicator ─────────────────────────────────────────────────────
-    // state: 'live' | 'fetching' | 'closed' | 'eod'
-    function setIndicator(state) {{
-      var el = document.getElementById('live-indicator');
-      if (!el) return;
-      var html = {{
-        live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
-        fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices...</span>',
-        closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
-        eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
-      }};
-      el.innerHTML = html[state] || html.closed;
-    }}
-
-    function stampTime(eod) {{
-      var ts = document.getElementById('live-ts');
-      if (ts) ts.textContent = (eod ? 'Close ' : 'Updated ') + etTime(!eod) + ' ET';
-      setIndicator(eod ? 'eod' : 'live');
-    }}
-
-    // ── DOM helpers ────────────────────────────────────────────────────────────
-    function fmt(n) {{
-      return '$' + n.toFixed(2).replace(/\\B(?=(\\d{{3}})+(?!\\d))/g, ',');
-    }}
-
-    function updateCard(pick, price) {{
-      var cpEl   = document.getElementById('cp-'      + pick.id);
-      var pnlEl  = document.getElementById('pnl-'     + pick.id);
-      var wrapEl = document.getElementById('cp-wrap-' + pick.id);
-      var fillEl = document.getElementById('pfill-'   + pick.id);
-      if (!cpEl) return;
-      var pct  = pick.direction === 'short'
-                   ? (pick.entry - price) / pick.entry * 100
-                   : (price - pick.entry) / pick.entry * 100;
-      var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
-      var sign = pct >= 0 ? '+' : '';
-      cpEl.textContent = fmt(price);
-      if (pnlEl)  {{ pnlEl.textContent = sign + pct.toFixed(1) + '%';
-                     pnlEl.className   = 'pnl-pill ' + cls; }}
-      if (wrapEl)   wrapEl.className   = 'metric-val ' + cls;
-      if (fillEl) {{
-        var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
-        var moved = pick.direction === 'short' ? pick.entry - price      : price - pick.entry;
-        var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
-        fillEl.style.width = w.toFixed(1) + '%';
-        fillEl.className   = 'progress-fill ' + cls;
-      }}
-    }}
-
-    // ── Unrealized P&L stat card (updates after each price fetch round) ─────────
-    // livePrices tracks the latest fetched price for each pick by id.
-    var livePrices = {{}};
-
-    function updateUnrealizedPnl() {{
-      var el = document.getElementById('unrealized-pnl-val');
-      if (!el || !PICKS || !PICKS.length) return;
-      var total = 0, count = 0;
-      PICKS.forEach(function(pick) {{
-        var price = livePrices[pick.id];
-        if (price == null) return;
-        var pct = pick.direction === 'short'
-                    ? (pick.entry - price) / pick.entry * 100
-                    : (price - pick.entry) / pick.entry * 100;
-        total += pct;
-        count++;
-      }});
-      if (count === 0) return;
-      var avg  = total / count;
-      var sign = avg >= 0 ? '+' : '';
-      var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
-      el.textContent = sign + avg.toFixed(2) + '%';
-      el.className   = 'stat-val ' + cls;
-    }}
-
-    // ── Fetch prices: staggered per-ticker via allorigins.win + v8/chart ───────
-    // v8/chart confirmed working. Staggered 700ms so allorigins doesn't rate-limit.
-    function fetchPrices(eod) {{
-      if (!PICKS || !PICKS.length) return;
-      var idx = 0, updated = 0;
-      function next() {{
-        if (idx >= PICKS.length) {{
-          if (updated > 0) {{
-            updateUnrealizedPnl();   // refresh stat card after all tickers fetched
-            stampTime(eod);
-          }}
-          return;
-        }}
-        var pick  = PICKS[idx++];
-        var yf    = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-                  + pick.ticker + '?interval=1m&range=1d';
-        var ao    = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yf);
-        fetch(ao)
-          .then(function(r) {{ return r.json(); }})
-          .then(function(d) {{
-            var price = d.chart.result[0].meta.regularMarketPrice;
-            if (price) {{
-              livePrices[pick.id] = price;  // store for P&L aggregation
-              updateCard(pick, price);
-              updated++;
-            }}
-          }})
-          .catch(function() {{}})
-          .then(function() {{ setTimeout(next, 700); }});
-      }}
-      next();
-    }}
-
-    // ── Main loop ──────────────────────────────────────────────────────────────
-    function tick() {{
-      var open = isMarketOpen();
-      if (open) {{
-        setIndicator('fetching');
-        fetchPrices(false);           // live — repeats every 30 s
-        setTimeout(tick, 30000);
-      }} else {{
-        // After hours: fetch once to show end-of-day prices, then stop polling
-        setIndicator('fetching');
-        fetchPrices(true);            // eod — runs once only
-      }}
-    }}
-
-    if (document.readyState === 'loading') {{
-      document.addEventListener('DOMContentLoaded', tick);
-    }} else {{
-      tick();
-    }}
-  }})();
+  {script_html}
   </script>
 </head>
 <body>
