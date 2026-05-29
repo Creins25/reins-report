@@ -371,12 +371,13 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 }
 """
 
-# ── Price updater v4 (live option premium × 100 P&L) ─────────────────────────────────────────────────────────────────────────────────────
-# __PICKS_JSON__ is replaced at build time with the JSON-serialised picks array.
-SCRIPT_V4 = r'''(function () {
+# ── Price updater v5 ──────────────────────────────────────────────────────────
+# Uses build-time option premiums (fetched by Python, no CORS) + live delta adjust.
+# __PICKS_JSON__ is replaced at build time.
+SCRIPT_V5 = r'''(function () {
   var PICKS = __PICKS_JSON__;
 
-  // CORS proxies — race simultaneously, first valid response wins
+  // CORS proxies — race for stock price only (option prices come from build time)
   var PROXIES = [
     function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) + '&_=' + Date.now(); },
     function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); }
@@ -397,13 +398,13 @@ SCRIPT_V4 = r'''(function () {
           .then(function (d) { if (!done) { done = true; resolve(d); } })
           .catch(function () {
             errs++;
-            if (errs === PROXIES.length && !done) { done = true; reject(new Error('all proxies failed')); }
+            if (errs === PROXIES.length && !done) { done = true; reject(new Error('all failed')); }
           });
       });
     });
   }
 
-  // ── Market hours: Mon-Fri 9:30-16:00 ET ──────────────────────────────────
+  // ── Market hours ──────────────────────────────────────────────────────────
   function isMarketOpen() {
     var et  = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
     var day = et.getDay();
@@ -419,7 +420,7 @@ SCRIPT_V4 = r'''(function () {
     });
   }
 
-  // ── Status indicator ──────────────────────────────────────────────────────
+  // ── Indicator ─────────────────────────────────────────────────────────────
   function setIndicator(state) {
     var el = document.getElementById('live-indicator');
     if (!el) return;
@@ -438,97 +439,66 @@ SCRIPT_V4 = r'''(function () {
     setIndicator(eod ? 'eod' : 'live');
   }
 
-  // ── Formatting helpers ────────────────────────────────────────────────────
+  // ── Format helpers ────────────────────────────────────────────────────────
   function fmt(n) {
     return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
   function fmtContract(n) {
-    // e.g. +$173/contract or -$23/contract
     var sign = n >= 0 ? '+$' : '-$';
     return sign + Math.abs(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/contract';
   }
 
-  // ── Fetch live option premium from Yahoo options chain ────────────────────
-  // P&L for options = (current_premium - entry_premium) * 100
-  // Each contract covers 100 shares of the underlying.
-  function fetchOptionPrice(pick) {
-    if (!pick.instrument || pick.instrument === 'equity' || !pick.strike || !pick.expiry)
-      return Promise.resolve(null);
+  // ── Option P&L (build-time premium + live delta adjustment) ──────────────
+  // At build time Python fetches the real option mid-price and stores it as
+  // pick.build_premium.  The stock price at that moment is pick.build_spot.
+  //
+  // When the browser fetches a live stock price we refine:
+  //   est_prem  = build_premium + delta * (live_spot - build_spot)
+  //   pnl_dollar = (est_prem - entry_premium) * 100   (100 shares per contract)
+  //   pnl_pct    = (est_prem - entry_premium) / entry_premium * 100
+  //
+  // If build_premium is missing (options fetch failed at build time) we fall
+  // back to plain stock-price % for the underlying.
+  function computePnl(pick, liveSpot) {
+    var isOpt  = pick.instrument && pick.instrument !== 'equity';
+    var hasBld = isOpt && pick.build_premium > 0 && pick.entry_premium > 0;
 
-    var expiryTs = Math.floor(new Date(pick.expiry + 'T00:00:00Z').getTime() / 1000);
-    var url = 'https://query1.finance.yahoo.com/v7/finance/options/' + pick.ticker
-            + '?date=' + expiryTs + '&_=' + Date.now();
-
-    return raceProxies(url)
-      .then(function (d) {
-        var res = d && d.optionChain && d.optionChain.result && d.optionChain.result[0];
-        if (!res) throw new Error('no result');
-        var opts  = res.options || [];
-        if (!opts.length) throw new Error('no options');
-        var chain = opts[0];
-        var contracts = pick.instrument === 'put' ? (chain.puts || []) : (chain.calls || []);
-        if (!contracts.length) throw new Error('no contracts');
-
-        // Find exact strike match, then nearest-strike fallback
-        var contract = null;
-        for (var j = 0; j < contracts.length; j++) {
-          if (Math.abs(contracts[j].strike - pick.strike) < 0.01) { contract = contracts[j]; break; }
-        }
-        if (!contract) {
-          var best = null, bestDiff = Infinity;
-          for (var k = 0; k < contracts.length; k++) {
-            var diff = Math.abs(contracts[k].strike - pick.strike);
-            if (diff < bestDiff) { bestDiff = diff; best = contracts[k]; }
-          }
-          contract = best;
-        }
-        if (!contract) throw new Error('no contract found');
-
-        // Use bid/ask midpoint; fall back to lastPrice
-        var bid = contract.bid || 0, ask = contract.ask || 0;
-        var mid = (bid > 0 && ask > 0) ? (bid + ask) / 2 : (contract.lastPrice || 0);
-        if (!mid || mid <= 0) throw new Error('no valid price');
-        return mid;
-      })
-      .catch(function () { return null; });
-  }
-
-  // ── Compute P&L ──────────────────────────────────────────────────────────
-  function computePnl(pick, stockPrice, optionMid) {
-    var isOpt = pick.instrument && pick.instrument !== 'equity';
-    // Options P&L: dollar = (current_premium - entry_premium) * 100 per contract
-    if (isOpt && optionMid != null && optionMid > 0 && pick.premium > 0) {
-      var premChange = optionMid - pick.premium;
+    if (hasBld) {
+      var dS       = (liveSpot != null) ? (liveSpot - pick.build_spot) : 0;
+      var estPrem  = pick.build_premium + pick.delta * dS;
+      if (estPrem < 0.01) estPrem = 0.01;          // floor at $0.01
+      var premChg  = estPrem - pick.entry_premium;
       return {
-        pct:         premChange / pick.premium * 100,
-        dollar:      premChange * 100,
-        isOpt:       true,
-        isReal:      true,
-        currentPrem: optionMid
+        pct:    premChg / pick.entry_premium * 100,
+        dollar: premChg * 100,
+        isOpt:  true,
+        estPrem: estPrem
       };
     }
-    // Equity P&L (or options fallback when premium fetch failed)
+
+    // Equity or fallback
+    var spotRef = liveSpot != null ? liveSpot : pick.entry;
     var pct = pick.direction === 'short'
-      ? (pick.entry - stockPrice) / pick.entry * 100
-      : (stockPrice - pick.entry) / pick.entry * 100;
-    return { pct: pct, dollar: null, isOpt: isOpt, isReal: !isOpt };
+      ? (pick.entry - spotRef) / pick.entry * 100
+      : (spotRef - pick.entry) / pick.entry * 100;
+    return { pct: pct, dollar: null, isOpt: false };
   }
 
-  // ── Update one pick card ──────────────────────────────────────────────────
-  function updateCard(pick, stockPrice, optionMid) {
+  // ── Update one card ───────────────────────────────────────────────────────
+  function updateCard(pick, liveSpot) {
     var cpEl   = document.getElementById('cp-'      + pick.id);
     var pnlEl  = document.getElementById('pnl-'     + pick.id);
     var wrapEl = document.getElementById('cp-wrap-' + pick.id);
     var fillEl = document.getElementById('pfill-'   + pick.id);
     if (!cpEl) return;
 
-    var pnl  = computePnl(pick, stockPrice, optionMid);
+    var pnl  = computePnl(pick, liveSpot);
     var pct  = pnl.pct;
     var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
     var sign = pct >= 0 ? '+' : '';
 
-    cpEl.textContent = fmt(stockPrice);
+    cpEl.textContent = fmt(liveSpot != null ? liveSpot : pick.entry);
 
     if (pnlEl) {
       var label = sign + pct.toFixed(1) + '%';
@@ -541,26 +511,24 @@ SCRIPT_V4 = r'''(function () {
     if (wrapEl) wrapEl.className = 'metric-val ' + cls;
     if (fillEl) {
       var total = pick.direction === 'short' ? pick.entry - pick.stop  : pick.target - pick.entry;
-      var moved = pick.direction === 'short' ? pick.entry - stockPrice : stockPrice - pick.entry;
+      var ref   = liveSpot != null ? liveSpot : pick.entry;
+      var moved = pick.direction === 'short' ? pick.entry - ref : ref - pick.entry;
       var w = total > 0 ? Math.max(0, Math.min(100, moved / total * 100)) : 0;
       fillEl.style.width = w.toFixed(1) + '%';
       fillEl.className   = 'progress-fill ' + cls;
     }
   }
 
-  // ── Aggregate unrealized P&L stat card ───────────────────────────────────
-  var livePrices  = {};
-  var liveOptions = {};
+  // ── Aggregate unrealized P&L ──────────────────────────────────────────────
+  var livePrices = {};
 
   function updateUnrealizedPnl() {
     var el = document.getElementById('unrealized-pnl-val');
     if (!el || !PICKS || !PICKS.length) return;
     var total = 0, count = 0;
     PICKS.forEach(function (pick) {
-      var sp = livePrices[pick.id];
-      if (sp == null) return;
-      var op  = liveOptions[pick.id] != null ? liveOptions[pick.id] : null;
-      var pnl = computePnl(pick, sp, op);
+      var sp  = livePrices[pick.id];
+      var pnl = computePnl(pick, sp != null ? sp : null);
       total  += pnl.pct;
       count++;
     });
@@ -572,7 +540,16 @@ SCRIPT_V4 = r'''(function () {
     el.className   = 'stat-val ' + cls;
   }
 
-  // ── Fetch all prices (stock + options) ────────────────────────────────────
+  // Render initial state from build_premium before any API call
+  function initCards() {
+    PICKS.forEach(function (pick) {
+      updateCard(pick, pick.build_spot > 0 ? pick.build_spot : pick.entry);
+      livePrices[pick.id] = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+    });
+    updateUnrealizedPnl();
+  }
+
+  // ── Fetch live stock prices ────────────────────────────────────────────────
   function fetchPrices(eod) {
     if (!PICKS || !PICKS.length) return;
     var idx = 0, updated = 0;
@@ -591,11 +568,8 @@ SCRIPT_V4 = r'''(function () {
           var sp = d.chart.result[0].meta.regularMarketPrice;
           if (!sp) throw new Error('no price');
           livePrices[pick.id] = sp;
-          return fetchOptionPrice(pick).then(function (optMid) {
-            if (optMid != null) liveOptions[pick.id] = optMid;
-            updateCard(pick, sp, liveOptions[pick.id] != null ? liveOptions[pick.id] : null);
-            updated++;
-          });
+          updateCard(pick, sp);
+          updated++;
         })
         .catch(function () {})
         .then(function () { setTimeout(next, 700); });
@@ -604,21 +578,26 @@ SCRIPT_V4 = r'''(function () {
   }
 
   // ── Main loop ─────────────────────────────────────────────────────────────
-  function tick() {
-    if (isMarketOpen()) {
-      setIndicator('fetching');
-      fetchPrices(false);
-      setTimeout(tick, 30000);
-    } else {
-      setIndicator('fetching');
-      fetchPrices(true);
+  function start() {
+    initCards();   // show build-time P&L immediately
+
+    function tick() {
+      if (isMarketOpen()) {
+        setIndicator('fetching');
+        fetchPrices(false);
+        setTimeout(tick, 30000);
+      } else {
+        setIndicator('fetching');
+        fetchPrices(true);
+      }
     }
+    tick();
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tick);
+    document.addEventListener('DOMContentLoaded', start);
   } else {
-    tick();
+    start();
   }
 })();'''
 
@@ -1261,46 +1240,95 @@ def build_site(week_str: str | None = None) -> Path:
         stats = {"total_picks":0,"open_picks":0,"closed_picks":0,
                  "win_rate":None,"avg_winner":None,"avg_loser":None}
 
-    # Build picks JSON for the client-side v4 live-price updater
-    # Options picks include strike/expiry so the browser can fetch live premium prices.
-    # P&L for options = (current_premium - entry_premium) * 100 per contract.
-    # Equity picks fall back to stock-price P&L.
+    # Build picks JSON — include build-time option premiums so the browser
+    # can compute accurate P&L = (current_premium - entry_premium) * 100
+    # without needing CORS access to the options chain.
+    # Picks also carry build_spot so the JS can delta-adjust for intraday moves.
     def _sfloat(val, default=0.0):
         """Safe float: converts NaN/None/invalid → default."""
         try:
             v = float(val)
-            return default if (v != v) else v   # NaN test: NaN != NaN is True
+            return default if (v != v) else v
         except (TypeError, ValueError):
             return default
+
+    def _fetch_build_premium(ticker, expiry_str, strike, instrument):
+        """Fetch current option mid-price at build time (Python has direct Yahoo access).
+        Finds nearest available expiry if stored date is a holiday/weekend.
+        Returns (mid_price, stock_price) or (None, None) on failure."""
+        try:
+            import yfinance as yf
+            t = yf.Ticker(ticker)
+            # Find nearest available expiry to the stored date
+            available = t.options
+            if not available:
+                return None, None
+            # Pick the closest available expiry
+            from datetime import datetime as _dt
+            target_dt = _dt.strptime(expiry_str[:10], "%Y-%m-%d")
+            best_exp  = min(available, key=lambda e: abs((_dt.strptime(e, "%Y-%m-%d") - target_dt).days))
+            # Get chain
+            chain = t.option_chain(best_exp)
+            contracts = chain.calls if instrument.lower() == "call" else chain.puts
+            # Find nearest strike
+            row = contracts[abs(contracts["strike"] - float(strike)) < 0.01]
+            if row.empty:
+                row = contracts.iloc[(contracts["strike"] - float(strike)).abs().argsort()[:1]]
+            r    = row.iloc[0]
+            bid  = float(r.get("bid") or 0)
+            ask  = float(r.get("ask") or 0)
+            mid  = (bid + ask) / 2 if bid > 0 and ask > 0 else float(r.get("lastPrice") or 0)
+            spot = float(t.fast_info.last_price or 0)
+            return (mid if mid > 0 else None), (spot if spot > 0 else None)
+        except Exception:
+            return None, None
 
     _picks_js_list = []
     if not open_picks.empty:
         for _, _pr in open_picks.iterrows():
             try:
-                _instr = str(_pr.get("instrument_type", "equity")).lower()
+                _instr  = str(_pr.get("instrument_type", "equity")).lower()
                 _is_opt = _instr in ("call", "put")
                 _p = {
-                    "id":         str(_pr.get("pick_id", "")).replace("-", ""),
-                    "ticker":     str(_pr.get("ticker", "")),
-                    "entry":      _sfloat(_pr.get("entry_price"),  0.0),
-                    "direction":  str(_pr.get("direction", "long")).lower(),
-                    "stop":       _sfloat(_pr.get("stop_price"),   0.0),
-                    "target":     _sfloat(_pr.get("target_price"), 0.0),
-                    "instrument": _instr,
-                    "premium":    _sfloat(_pr.get("premium_paid"), 0.0),
-                    "delta":      _sfloat(_pr.get("delta"),  1.0 if not _is_opt else 0.5),
-                    "gamma":      _sfloat(_pr.get("gamma"),  0.0),
+                    "id":            str(_pr.get("pick_id", "")).replace("-", ""),
+                    "ticker":        str(_pr.get("ticker", "")),
+                    "entry":         _sfloat(_pr.get("entry_price"),  0.0),
+                    "direction":     str(_pr.get("direction", "long")).lower(),
+                    "stop":          _sfloat(_pr.get("stop_price"),   0.0),
+                    "target":        _sfloat(_pr.get("target_price"), 0.0),
+                    "instrument":    _instr,
+                    "entry_premium": _sfloat(_pr.get("premium_paid"), 0.0),
+                    "premium":       _sfloat(_pr.get("premium_paid"), 0.0),  # kept for compat
+                    "delta":         _sfloat(_pr.get("delta"),  1.0 if not _is_opt else 0.5),
+                    "gamma":         _sfloat(_pr.get("gamma"),  0.0),
+                    "build_premium": 0.0,   # filled below for options
+                    "build_spot":    0.0,   # filled below
                 }
                 if _is_opt:
                     _p["strike"] = _sfloat(_pr.get("strike"), 0.0)
                     _exp = str(_pr.get("expiry", "")).strip()
                     if _exp and len(_exp) >= 10:
                         _p["expiry"] = _exp[:10]
+                        _bprem, _bspot = _fetch_build_premium(
+                            _p["ticker"], _exp, _p["strike"], _instr
+                        )
+                        if _bprem is not None:
+                            _p["build_premium"] = round(_bprem, 4)
+                        if _bspot is not None:
+                            _p["build_spot"] = round(_bspot, 4)
+                else:
+                    # For equities, build_spot = live spot (used as delta-adj anchor)
+                    try:
+                        import yfinance as _yf
+                        _bspot = float(_yf.Ticker(_p["ticker"]).fast_info.last_price or 0)
+                        _p["build_spot"] = round(_bspot, 4)
+                    except Exception:
+                        _p["build_spot"] = _p["entry"]
                 _picks_js_list.append(_p)
             except Exception:
                 pass
-    picks_json  = json.dumps(_picks_js_list)           # NaN values are now gone — clean JSON
-    script_html = SCRIPT_V4.replace('__PICKS_JSON__', picks_json)
+    picks_json  = json.dumps(_picks_js_list)
+    script_html = SCRIPT_V5.replace('__PICKS_JSON__', picks_json)
 
     # Prose — fall back to auto-generated narrative if not written yet
     written_narrative = _read_section(nl_text, "Narrative")
