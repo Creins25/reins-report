@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>The Reins Report · 2026-W22</title>
+  <title>The Reins Report · 2026-W23</title>
   <style>
 :root {
   --bg:           #ffffff;
@@ -353,7 +353,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "b05b0eb4", "ticker": "CNC", "entry": 59.6, "direction": "long", "stop": 55.0, "target": 65.0, "instrument": "call", "entry_premium": 1.93, "premium": 1.93, "delta": 0.4, "gamma": 0.05, "build_premium": 3.475, "build_spot": 59.6, "strike": 60.0, "expiry": "2026-07-17"}, {"id": "c55b6231", "ticker": "CLX", "entry": 90.02, "direction": "short", "stop": 95.0, "target": 80.0, "instrument": "put", "entry_premium": 3.15, "premium": 3.15, "delta": -0.35, "gamma": 0.04, "build_premium": 3.95, "build_spot": 90.02, "strike": 90.0, "expiry": "2026-07-17"}, {"id": "0bb9a629", "ticker": "MO", "entry": 69.58, "direction": "short", "stop": 74.0, "target": 72.0, "instrument": "call", "entry_premium": -0.47, "premium": -0.47, "delta": -0.2, "gamma": -0.03, "build_premium": 0.925, "build_spot": 69.58, "strike": 72.0, "expiry": "2026-07-17"}];
+  var PICKS = [{"id": "b05b0eb4", "ticker": "CNC", "entry": 59.6, "direction": "long", "stop": 55.0, "target": 65.0, "instrument": "call", "entry_premium": 1.93, "premium": 1.93, "delta": 0.4, "gamma": 0.05, "build_premium": 3.475, "build_spot": 59.6, "pending": true, "strike": 60.0, "expiry": "2026-07-17"}, {"id": "c55b6231", "ticker": "CLX", "entry": 90.02, "direction": "short", "stop": 95.0, "target": 80.0, "instrument": "put", "entry_premium": 3.15, "premium": 3.15, "delta": -0.35, "gamma": 0.04, "build_premium": 3.95, "build_spot": 90.02, "pending": true, "strike": 90.0, "expiry": "2026-07-17"}, {"id": "0bb9a629", "ticker": "MO", "entry": 69.58, "direction": "short", "stop": 74.0, "target": 72.0, "instrument": "call", "entry_premium": -0.47, "premium": -0.47, "delta": -0.2, "gamma": -0.03, "build_premium": 0.925, "build_spot": 69.58, "pending": true, "strike": 72.0, "expiry": "2026-07-17"}];
 
   // CORS proxies — race for stock price only (option prices come from build time)
   var PROXIES = [
@@ -471,6 +471,21 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     var fillEl = document.getElementById('pfill-'   + pick.id);
     if (!cpEl) return;
 
+    // ── Pending picks: show "PENDING MONDAY OPEN" — no P&L ─────────────
+    if (pick.pending) {
+      if (cpEl)  cpEl.textContent  = 'PENDING';
+      if (pnlEl) {
+        pnlEl.textContent = 'Place Mon AM';
+        pnlEl.className   = 'pnl-pill muted';
+      }
+      if (wrapEl) wrapEl.className = 'metric-val muted';
+      if (fillEl) {
+        fillEl.style.width = '0%';
+        fillEl.className   = 'progress-fill muted';
+      }
+      return;
+    }
+
     var pnl  = computePnl(pick, liveSpot);
     var pct  = pnl.pct;
     var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
@@ -497,32 +512,42 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     }
   }
 
-  // ── Aggregate unrealized P&L ──────────────────────────────────────────────
+  // ── Aggregate Cumulative P/L ──────────────────────────────────────────────
+  // CumulP/L = realized P&L (from closed picks, served as data-realized attr)
+  //          + avg unrealized P&L of LIVE (non-pending) picks
   var livePrices = {};
 
   function updateUnrealizedPnl() {
     var el = document.getElementById('unrealized-pnl-val');
     if (!el || !PICKS || !PICKS.length) return;
-    var total = 0, count = 0;
+    var realized = parseFloat(el.getAttribute('data-realized') || '0') || 0;
+
+    var liveTotal = 0, liveCount = 0;
     PICKS.forEach(function (pick) {
+      if (pick.pending) return;          // pending picks contribute 0
       var sp  = livePrices[pick.id];
       var pnl = computePnl(pick, sp != null ? sp : null);
-      total  += pnl.pct;
-      count++;
+      liveTotal += pnl.pct;
+      liveCount++;
     });
-    if (!count) return;
-    var avg  = total / count;
-    var sign = avg >= 0 ? '+' : '';
-    var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
-    el.textContent = sign + avg.toFixed(2) + '%';
+    var avgLive = liveCount ? (liveTotal / liveCount) : 0;
+    var total   = realized + avgLive;
+
+    var sign = total >= 0 ? '+' : '';
+    var cls  = total > 0.005 ? 'gain' : (total < -0.005 ? 'loss' : 'muted');
+    el.textContent = sign + total.toFixed(2) + '%';
     el.className   = 'stat-val ' + cls;
   }
 
   // Render initial state from build_premium before any API call
   function initCards() {
     PICKS.forEach(function (pick) {
-      updateCard(pick, pick.build_spot > 0 ? pick.build_spot : pick.entry);
-      livePrices[pick.id] = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      if (pick.pending) {
+        updateCard(pick, null);          // show PENDING placeholder
+      } else {
+        updateCard(pick, pick.build_spot > 0 ? pick.build_spot : pick.entry);
+        livePrices[pick.id] = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      }
     });
     updateUnrealizedPnl();
   }
@@ -538,6 +563,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
         return;
       }
       var pick = PICKS[idx++];
+      // Skip pending picks — they show "PENDING" and don't need live data
+      if (pick.pending) { setTimeout(next, 0); return; }
       var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
                + pick.ticker + '?interval=1m&range=1d&_=' + Date.now();
 
@@ -600,8 +627,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       </div>
     </div>
     <div class="masthead-right">
-      <div class="pub-week">2026-W22</div>
-      <div class="pub-date">May 25 – May 31, 2026 · Updated May 31, 2026</div>
+      <div class="pub-week">2026-W23</div>
+      <div class="pub-date">June 1 – June 7, 2026 · Updated May 31, 2026</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
@@ -610,16 +637,14 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   </div>
 </header>
 
-<div class="ticker-strip"><div class="ticker-track"><div class="ticker-item"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div><div class="ticker-item"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div><div class="ticker-item"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div><div class="ticker-item"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-2bps</span></div><div class="ticker-item"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div><div class="ticker-item"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div><div class="ticker-item"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div><div class="ticker-item"><span class="t-sym">SPX</span><span class="t-val">7473.5</span><span class="t-chg up">+0.88%</span></div><div class="ticker-item"><span class="t-sym">NDX</span><span class="t-val">29481.6</span><span class="t-chg up">+1.22%</span></div><div class="ticker-item"><span class="t-sym">VIX</span><span class="t-val">16.70</span><span class="t-chg down">-9.39%</span></div><div class="ticker-item"><span class="t-sym">US10Y</span><span class="t-val">4.57%</span><span class="t-chg down">-2bps</span></div><div class="ticker-item"><span class="t-sym">DXY</span><span class="t-val">99.32</span><span class="t-chg up">+0.05%</span></div><div class="ticker-item"><span class="t-sym">Gold</span><span class="t-val">4521.0</span><span class="t-chg down">-0.76%</span></div><div class="ticker-item"><span class="t-sym">WTI</span><span class="t-val">96.60</span><span class="t-chg down">-8.37%</span></div></div></div>
+<div class="ticker-strip"><div class="ticker-track"></div></div>
 
 <div class="page-wrap">
 
   <div class="market-overview">
-    <div class="overview-kicker">Market Structure · 2026-W22</div>
-    <div class="overview-theme">Bull market, low volatility, AI spending driving tech higher while financials are overdue for a catch up.</div>
-    <div class="overview-body"><p>Stocks had a solid week. The S&P 500 finished at 7,473, up 0.88 percent on the week and 9.17 percent for the year. The Nasdaq did even better, up 1.22 percent and now 16.76 percent year to date. Technology is still driving this market and that is not changing anytime soon. What really stood out last week was the Russell 2000 surging 2.72 percent. When small caps show up like that it usually means the rally has real legs. It is not just a handful of mega cap stocks holding everything up.</p>
-<p>The volatility picture is genuinely supportive right now. The VIX fell almost 10 percent last week to 16.70 and the MOVE index, which tracks bond market volatility, also pulled back to 78.4. Both are calm. That is exactly the environment where you want to be holding long call options because you get the full benefit of any upside move without the premium getting eaten by rising volatility. The 10 year Treasury held at 4.57 percent and the yield curve is steepening, which is real money for JPM's net interest margin every single quarter.</p>
-<p>On commodities, WTI crude fell 8.37 percent last week to 96.60 dollars. That matters because oil pulling back removes the biggest inflation tail risk that was keeping the Fed nervous. Lower oil makes it more likely that rates stay where they are or come down, which is good for growth stocks and good for bank spreads. Gold softened slightly to 4,521 dollars, which fits the risk-on mood. The dollar went basically nowhere at 99.32. No big currency moves means no headwind on company earnings. The one number worth putting a circle around is the financials sector down 4.68 percent year to date while technology is up 25.45 percent. That 30 point gap does not stay that wide forever and it is the entire reason JPM is in the portfolio.</p></div>
+    <div class="overview-kicker">Market Structure · 2026-W23</div>
+    <div class="overview-theme">Vol's cheap on the index, expensive on the wrong names — selling rich premium, buying defined-risk longs.</div>
+    <div class="overview-body"><p>S&P pulled back, closing at N/A (N/A WTD, N/A YTD). Nasdaq at N/A (N/A WTD, N/A YTD) — tech is still the engine and I don't see that changing. Russell 2000 was N/A — small caps are still lagging, which tells me this is a narrower rally than the headline numbers suggest. VIX at N/A (N/A WTD), MOVE at N/A (N/A WTD). Both quiet. That's the ideal setup for holding calls — you get the upside without vol eating your premium. 10-year sitting at N/A, 2s10s at N/A. Curve steepening is real money for JPM's NIM every quarter.</p><p>WTI pushed to N/A (N/A WTD, N/A YTD) — oil creeping higher is worth watching. Persistent energy inflation complicates the Fed's path. Gold moved to N/A (N/A WTD) — worth watching if it keeps going. Dollar at N/A (N/A WTD) — flat, no FX headwind baked into earnings. The stat I keep coming back to: XLF is N/A YTD vs XLK at N/A YTD. That spread doesn't stay this wide in a sustained bull market. That's the JPM trade in one line.</p></div>
   </div>
 
   <div class="about-panel">
@@ -645,7 +670,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">7</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">3</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">0</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val muted" id="unrealized-pnl-val">+0.00%</div><div class="stat-lbl">Unrealized P&L</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">7</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">0</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">4</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val navy">3</div><div class="stat-lbl">Pending</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="6.6200">+6.62%</div><div class="stat-lbl">Cumulative P/L</div></div></div>
   </section>
 
   <section>
@@ -673,7 +698,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
                 <label>Current &amp; P&amp;L</label>
                 <div id="cp-wrap-b05b0eb4" class="metric-val flat">
                   <span id="cp-b05b0eb4">$59.60</span>
-                  <span id="pnl-b05b0eb4" class="pnl-pill flat">+0.0%</span>
+                  <span id="pnl-b05b0eb4" class="pnl-pill flat">—</span>
                 </div>
               </div>
               <div class="metric">
@@ -837,7 +862,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
                 <label>Current &amp; P&amp;L</label>
                 <div id="cp-wrap-c55b6231" class="metric-val flat">
                   <span id="cp-c55b6231">$90.02</span>
-                  <span id="pnl-c55b6231" class="pnl-pill flat">+0.0%</span>
+                  <span id="pnl-c55b6231" class="pnl-pill flat">—</span>
                 </div>
               </div>
               <div class="metric">
@@ -1001,7 +1026,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
                 <label>Current &amp; P&amp;L</label>
                 <div id="cp-wrap-0bb9a629" class="metric-val flat">
                   <span id="cp-0bb9a629">$69.58</span>
-                  <span id="pnl-0bb9a629" class="pnl-pill flat">+0.0%</span>
+                  <span id="pnl-0bb9a629" class="pnl-pill flat">—</span>
                 </div>
               </div>
               <div class="metric">
@@ -1147,21 +1172,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">🌐 Cross-Asset Scoreboard</div>
-    <div class="table-wrap"><table><thead><tr><th>Instrument</th><th class="r">Close</th><th class="r">1W Chg</th><th class="r">YTD Chg</th></tr></thead><tbody><tr><td class="sh" colspan="4">Rates</td></tr><tr><td class="nm">US2Y</td><td class="r">4.08%</td><td class="r down">-1bps</td><td class="r up">+61bps</td></tr><tr><td class="nm">US10Y</td><td class="r">4.57%</td><td class="r down">-2bps</td><td class="r up">+39bps</td></tr><tr><td class="nm">2s10s</td><td class="r">49bps</td><td class="r down">-1bps</td><td class="r down">-22bps</td></tr><tr><td class="nm">MOVE</td><td class="r">78.4</td><td class="r down">-1.80%</td><td class="r up">+22.62%</td></tr><tr><td class="sh" colspan="4">Equities</td></tr><tr><td class="nm">SPX</td><td class="r">7473.5</td><td class="r up">+0.88%</td><td class="r up">+9.17%</td></tr><tr><td class="nm">NDX</td><td class="r">29481.6</td><td class="r up">+1.22%</td><td class="r up">+16.76%</td></tr><tr><td class="nm">RUT</td><td class="r">2869.2</td><td class="r up">+2.72%</td><td class="r up">+15.61%</td></tr><tr><td class="nm">XLF</td><td class="r">51.94</td><td class="r up">+1.64%</td><td class="r down">-4.68%</td></tr><tr><td class="nm">XLE</td><td class="r">59.49</td><td class="r up">+0.08%</td><td class="r up">+33.93%</td></tr><tr><td class="nm">XLK</td><td class="r">180.39</td><td class="r up">+2.34%</td><td class="r up">+25.45%</td></tr><tr><td class="nm">XLY</td><td class="r">119.18</td><td class="r up">+2.27%</td><td class="r up">+0.01%</td></tr><tr><td class="nm">XLP</td><td class="r">84.80</td><td class="r up">+0.19%</td><td class="r up">+9.78%</td></tr><tr><td class="sh" colspan="4">FX</td></tr><tr><td class="nm">DXY</td><td class="r">99.32</td><td class="r up">+0.05%</td><td class="r up">+1.06%</td></tr><tr><td class="nm">EURUSD</td><td class="r">1.1621</td><td class="r down">-0.35%</td><td class="r down">-1.07%</td></tr><tr><td class="nm">USDJPY</td><td class="r">159.02</td><td class="r up">+0.40%</td><td class="r up">+1.67%</td></tr><tr><td class="sh" colspan="4">Credit</td></tr><tr><td class="nm">HYG</td><td class="r">79.91</td><td class="r up">+0.57%</td><td class="r up">+1.10%</td></tr><tr><td class="nm">LQD</td><td class="r">108.37</td><td class="r up">+0.47%</td><td class="r down">-0.15%</td></tr><tr><td class="sh" colspan="4">Commodities</td></tr><tr><td class="nm">WTI</td><td class="r">96.60</td><td class="r down">-8.37%</td><td class="r up">+68.23%</td></tr><tr><td class="nm">Gold</td><td class="r">4521.0</td><td class="r down">-0.76%</td><td class="r up">+4.52%</td></tr><tr><td class="nm">Copper</td><td class="r">6.3420</td><td class="r up">+1.45%</td><td class="r up">+12.65%</td></tr><tr><td class="sh" colspan="4">Vol</td></tr><tr><td class="nm">VIX</td><td class="r">16.70</td><td class="r down">-9.39%</td><td class="r up">+11.71%</td></tr></tbody></table></div>
-  </section>
-
-  <section>
-    <div class="section-label">📝 My Read</div>
-    <div class="prose-card" style="font-size:13.5px;line-height:1.75">
-      <p>Stocks had a solid week. The S&P 500 finished at 7,473, up 0.88 percent on the week and 9.17 percent for the year. The Nasdaq did even better, up 1.22 percent and now 16.76 percent year to date. Technology is still driving this market and that is not changing anytime soon. What really stood out last week was the Russell 2000 surging 2.72 percent. When small caps show up like that it usually means the rally has real legs. It is not just a handful of mega cap stocks holding everything up.</p>
-<p>The volatility picture is genuinely supportive right now. The VIX fell almost 10 percent last week to 16.70 and the MOVE index, which tracks bond market volatility, also pulled back to 78.4. Both are calm. That is exactly the environment where you want to be holding long call options because you get the full benefit of any upside move without the premium getting eaten by rising volatility. The 10 year Treasury held at 4.57 percent and the yield curve is steepening, which is real money for JPM's net interest margin every single quarter.</p>
-<p>On commodities, WTI crude fell 8.37 percent last week to 96.60 dollars. That matters because oil pulling back removes the biggest inflation tail risk that was keeping the Fed nervous. Lower oil makes it more likely that rates stay where they are or come down, which is good for growth stocks and good for bank spreads. Gold softened slightly to 4,521 dollars, which fits the risk-on mood. The dollar went basically nowhere at 99.32. No big currency moves means no headwind on company earnings. The one number worth putting a circle around is the financials sector down 4.68 percent year to date while technology is up 25.45 percent. That 30 point gap does not stay that wide forever and it is the entire reason JPM is in the portfolio.</p>
-      <h3>The Trade Rationale</h3>
-      <p>I assign ~65% probability to continued grinding upside through June option expiry. The AI capex supercycle is the dominant macro narrative and it has legs — MSFT, META, and AMZN have each committed $60-80B in annual capex anchored to NVIDIA supply, and none of that demand is going away. The Bull/LowVol regime means momentum continues to work and dips are for buying.</p>
-<strong>Base case (~65%):</strong> NVDA earnings beat on Wednesday confirms Blackwell Ultra demand — the stock moves +8-12% and our $220C triples. META Connect June 4 adds a second catalyst. By June 20 expiry, all three calls are deep in-the-money and we close at 3-5× premium. JPM grinds +3-5% into Q2 earnings in mid-July as the rates setup becomes consensus.
-<strong>Bull case (~20%):</strong> NVDA gaps +15%+ on earnings with raised guidance. The AI narrative re-accelerates. XLF starts closing the 30-point gap to XLK. Portfolio return exceeds 200% on options premium. META Connect produces a hardware catalyst that wasn't priced.
-<strong>Bear / tail case (~15%):</strong> NVDA misses on margin guidance or provides weak Q3 outlook. Vol spikes, our calls go to near-zero. Max loss on options: $862 (NVDA) + $705 (AMZN) + $1,724 (META) = $3,291 if all three expire worthless. JPM is unaffected (equity position with defined stop at $291). This scenario requires a fundamental breakdown in AI capex narrative — which I view as low probability given visible committed spending.
-    </div>
+    <div class="table-wrap"><table><thead><tr><th>Instrument</th><th class="r">Close</th><th class="r">1W Chg</th><th class="r">YTD Chg</th></tr></thead><tbody><tr><td class="sh" colspan="4">Equities</td></tr><tr><td class="nm">SPY</td><td class="r">756.48</td><td class="r up">+1.85%</td><td class="r up">+12.4%</td></tr><tr><td class="nm">QQQ</td><td class="r">738.31</td><td class="r up">+3.33%</td><td class="r up">+18.2%</td></tr><tr><td class="nm">IWM</td><td class="r">290.43</td><td class="r up">+2.81%</td><td class="r up">+17.0%</td></tr><tr><td class="sh" colspan="4">Sector ETFs</td></tr><tr><td class="nm">XLK (Tech)</td><td class="r">191.02</td><td class="r up">+6.95%</td><td class="r up">+29.1%</td></tr><tr><td class="nm">XLF (Financials)</td><td class="r">51.58</td><td class="r down">-0.29%</td><td class="r down">-5.4%</td></tr><tr><td class="nm">XLV (Health Care)</td><td class="r">149.47</td><td class="r up">+0.89%</td><td class="r down">-1.2%</td></tr><tr><td class="nm">XLE (Energy)</td><td class="r">56.29</td><td class="r down">-4.80%</td><td class="r up">+26.7%</td></tr><tr><td class="nm">XLI (Industrials)</td><td class="r">173.13</td><td class="r up">+1.52%</td><td class="r up">+7.8%</td></tr><tr><td class="nm">XLY (Disc.)</td><td class="r">120.87</td><td class="r up">+1.83%</td><td class="r up">+1.4%</td></tr><tr><td class="nm">XLP (Staples)</td><td class="r">82.91</td><td class="r down">-2.07%</td><td class="r up">+7.4%</td></tr><tr><td class="nm">XLC (Comm.)</td><td class="r">115.69</td><td class="r down">-0.35%</td><td class="r up">+13.5%</td></tr><tr><td class="nm">XLB (Materials)</td><td class="r">51.15</td><td class="r up">+2.26%</td><td class="r up">+0.9%</td></tr><tr><td class="nm">XLRE (RE)</td><td class="r">43.99</td><td class="r down">-1.15%</td><td class="r down">-3.8%</td></tr><tr><td class="nm">XLU (Utilities)</td><td class="r">44.42</td><td class="r down">-1.29%</td><td class="r up">+5.0%</td></tr><tr><td class="sh" colspan="4">Vol & Credit</td></tr><tr><td class="nm">^VIX</td><td class="r">15.32</td><td class="r down">-8.26%</td><td class="r down">-16.8%</td></tr><tr><td class="nm">TLT</td><td class="r">85.76</td><td class="r up">+1.83%</td><td class="r down">-1.2%</td></tr><tr><td class="nm">HYG</td><td class="r">80.31</td><td class="r up">+0.51%</td><td class="r up">+1.7%</td></tr></tbody></table></div>
   </section>
 
 </div>

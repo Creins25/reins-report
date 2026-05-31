@@ -319,25 +319,30 @@ def close_pick(pick_id: str, reason: str, close_price: float | None = None) -> d
 
 def get_open_picks() -> pd.DataFrame:
     """
-    Return open picks with two computed columns added:
-      live_pnl_pct: current unrealized P&L %
+    Return open AND pending picks with computed columns added:
+      live_pnl_pct: current unrealized P&L % (None for pending picks)
       days_held:    integer days since date_added
-    Sorted by live_pnl_pct descending.
+      is_pending:   True if pick hasn't been placed yet (don't track P&L live)
+    Sorted by status (pending first) then live_pnl_pct descending.
     """
     df = _load_ledger()
-    open_df = df[df["status"] == "open"].copy()
+    open_df = df[df["status"].isin(["open", "pending"])].copy()
 
     if open_df.empty:
         return open_df
 
+    open_df["is_pending"] = open_df["status"] == "pending"
+    # Live P&L only for picks that are actually placed (status='open')
     open_df["live_pnl_pct"] = open_df.apply(
-        lambda r: _compute_live_pnl(r["entry_price"], r["current_price"], r["direction"]),
+        lambda r: None if r["status"] == "pending"
+                  else _compute_live_pnl(r["entry_price"], r["current_price"], r["direction"]),
         axis=1,
     )
     open_df["days_held"] = open_df["date_added"].apply(
         lambda d: (date.today() - date.fromisoformat(d)).days if d else None
     )
-    return open_df.sort_values("live_pnl_pct", ascending=False)
+    # Pending picks shown first, then placed picks sorted by P&L
+    return open_df.sort_values(["is_pending", "live_pnl_pct"], ascending=[False, False])
 
 
 def get_closed_picks(year: int | None = None) -> pd.DataFrame:
@@ -371,19 +376,21 @@ def compute_track_record() -> dict:
     Returns a dict — see format_track_record_summary() for how it's displayed.
     """
     df = _load_ledger()
-    open_picks  = df[df["status"] == "open"]
-    closed_picks = df[df["status"].str.startswith("closed_")].copy()
+    open_picks    = df[df["status"] == "open"]       # placed, live
+    pending_picks = df[df["status"] == "pending"]    # ledger entry, not yet placed
+    closed_picks  = df[df["status"].str.startswith("closed")].copy()
 
     base = {
-        "total_picks":  len(df),
-        "open_picks":   len(open_picks),
-        "closed_picks": len(closed_picks),
+        "total_picks":   len(df),
+        "open_picks":    len(open_picks),
+        "pending_picks": len(pending_picks),
+        "closed_picks":  len(closed_picks),
     }
 
     if closed_picks.empty:
         return {**base, "win_rate": None, "avg_winner": None, "avg_loser": None,
                 "avg_holding_days": None, "best_pick": None, "worst_pick": None,
-                "by_sector": {}}
+                "by_sector": {}, "cumulative_pnl_pct": 0.0}
 
     closed_picks["realized_pnl_pct"] = pd.to_numeric(closed_picks["realized_pnl_pct"], errors="coerce")
     closed_picks["days_held"] = closed_picks.apply(
@@ -407,13 +414,17 @@ def compute_track_record() -> dict:
         by_sector[sector] = {"picks": len(grp), "wins": wins,
                              "win_rate": wins / len(grp)}
 
+    # ── Cumulative P/L: sum of realized P/L across every closed pick ─────
+    cumulative_pnl = float(closed_picks["realized_pnl_pct"].sum())
+
     return {
         **base,
-        "win_rate":        len(winners) / len(closed_picks),
-        "avg_winner":      float(winners["realized_pnl_pct"].mean()) if not winners.empty else None,
-        "avg_loser":       float(losers["realized_pnl_pct"].mean())  if not losers.empty  else None,
+        "win_rate":         len(winners) / len(closed_picks),
+        "avg_winner":       float(winners["realized_pnl_pct"].mean()) if not winners.empty else None,
+        "avg_loser":        float(losers["realized_pnl_pct"].mean())  if not losers.empty  else None,
         "avg_holding_days": float(closed_picks["days_held"].mean()),
-        "best_pick":       f"{best['ticker']} ({best['realized_pnl_pct']:+.1f}%)",
-        "worst_pick":      f"{worst['ticker']} ({worst['realized_pnl_pct']:+.1f}%)",
-        "by_sector":       by_sector,
+        "best_pick":        f"{best['ticker']} ({best['realized_pnl_pct']:+.1f}%)",
+        "worst_pick":       f"{worst['ticker']} ({worst['realized_pnl_pct']:+.1f}%)",
+        "by_sector":        by_sector,
+        "cumulative_pnl_pct": cumulative_pnl,
     }

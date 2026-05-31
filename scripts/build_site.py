@@ -493,6 +493,21 @@ SCRIPT_V5 = r'''(function () {
     var fillEl = document.getElementById('pfill-'   + pick.id);
     if (!cpEl) return;
 
+    // ── Pending picks: show "PENDING MONDAY OPEN" — no P&L ─────────────
+    if (pick.pending) {
+      if (cpEl)  cpEl.textContent  = 'PENDING';
+      if (pnlEl) {
+        pnlEl.textContent = 'Place Mon AM';
+        pnlEl.className   = 'pnl-pill muted';
+      }
+      if (wrapEl) wrapEl.className = 'metric-val muted';
+      if (fillEl) {
+        fillEl.style.width = '0%';
+        fillEl.className   = 'progress-fill muted';
+      }
+      return;
+    }
+
     var pnl  = computePnl(pick, liveSpot);
     var pct  = pnl.pct;
     var cls  = pct > 0.005 ? 'gain' : (pct < -0.005 ? 'loss' : 'flat');
@@ -519,32 +534,42 @@ SCRIPT_V5 = r'''(function () {
     }
   }
 
-  // ── Aggregate unrealized P&L ──────────────────────────────────────────────
+  // ── Aggregate Cumulative P/L ──────────────────────────────────────────────
+  // CumulP/L = realized P&L (from closed picks, served as data-realized attr)
+  //          + avg unrealized P&L of LIVE (non-pending) picks
   var livePrices = {};
 
   function updateUnrealizedPnl() {
     var el = document.getElementById('unrealized-pnl-val');
     if (!el || !PICKS || !PICKS.length) return;
-    var total = 0, count = 0;
+    var realized = parseFloat(el.getAttribute('data-realized') || '0') || 0;
+
+    var liveTotal = 0, liveCount = 0;
     PICKS.forEach(function (pick) {
+      if (pick.pending) return;          // pending picks contribute 0
       var sp  = livePrices[pick.id];
       var pnl = computePnl(pick, sp != null ? sp : null);
-      total  += pnl.pct;
-      count++;
+      liveTotal += pnl.pct;
+      liveCount++;
     });
-    if (!count) return;
-    var avg  = total / count;
-    var sign = avg >= 0 ? '+' : '';
-    var cls  = avg > 0.005 ? 'gain' : (avg < -0.005 ? 'loss' : 'muted');
-    el.textContent = sign + avg.toFixed(2) + '%';
+    var avgLive = liveCount ? (liveTotal / liveCount) : 0;
+    var total   = realized + avgLive;
+
+    var sign = total >= 0 ? '+' : '';
+    var cls  = total > 0.005 ? 'gain' : (total < -0.005 ? 'loss' : 'muted');
+    el.textContent = sign + total.toFixed(2) + '%';
     el.className   = 'stat-val ' + cls;
   }
 
   // Render initial state from build_premium before any API call
   function initCards() {
     PICKS.forEach(function (pick) {
-      updateCard(pick, pick.build_spot > 0 ? pick.build_spot : pick.entry);
-      livePrices[pick.id] = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      if (pick.pending) {
+        updateCard(pick, null);          // show PENDING placeholder
+      } else {
+        updateCard(pick, pick.build_spot > 0 ? pick.build_spot : pick.entry);
+        livePrices[pick.id] = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      }
     });
     updateUnrealizedPnl();
   }
@@ -560,6 +585,8 @@ SCRIPT_V5 = r'''(function () {
         return;
       }
       var pick = PICKS[idx++];
+      // Skip pending picks — they show "PENDING" and don't need live data
+      if (pick.pending) { setTimeout(next, 0); return; }
       var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
                + pick.ticker + '?interval=1m&range=1d&_=' + Date.now();
 
@@ -904,34 +931,39 @@ def _build_ticker_html(rows: list[dict]) -> str:
 # ── Section builders ───────────────────────────────────────────────────────────
 
 def _build_stats_html(stats: dict) -> str:
-    total  = stats.get("total_picks", 0)
-    open_n = stats.get("open_picks", 0)
-    closed = stats.get("closed_picks", 0)
+    total   = stats.get("total_picks",   0)
+    open_n  = stats.get("open_picks",    0)
+    closed  = stats.get("closed_picks",  0)
+    pending = stats.get("pending_picks", 0)
 
-    # Unrealized P&L — avg across open picks; JS will update this live
-    avg_upnl = stats.get("avg_unrealized_pnl")
-    if avg_upnl is not None:
-        upnl_val = f"{avg_upnl:+.2f}%"
-        upnl_cls = "gain" if avg_upnl > 0.005 else ("loss" if avg_upnl < -0.005 else "muted")
-    else:
-        upnl_val = "—"
-        upnl_cls = "muted"
+    # Cumulative P/L = sum of all REALIZED P&L from closed picks +
+    #                  (live unrealized from open picks, updated by JS)
+    # We seed the static value with realized only; JS adds the live component.
+    realized_pnl = stats.get("cumulative_pnl_pct")
+    if realized_pnl is None:
+        realized_pnl = 0.0
+    pnl_val = f"{realized_pnl:+.2f}%"
+    pnl_cls = ("gain" if realized_pnl > 0.005
+               else "loss" if realized_pnl < -0.005
+               else "muted")
 
     html = '<div class="stats-row">'
     # Static cards (no live update needed)
-    for val, label, cls in [
-        (str(total),  "Total Picks", "navy"),
-        (str(open_n), "Open",        "gold"),
-        (str(closed), "Closed",      "muted"),
-    ]:
+    cards = [(str(total),   "Total Picks", "navy"),
+             (str(open_n),  "Open",        "gold"),
+             (str(closed),  "Closed",      "muted")]
+    if pending:
+        cards.append((str(pending), "Pending",   "navy"))
+    for val, label, cls in cards:
         html += (f'<div class="stat-card">'
                  f'<div class="stat-val {cls}">{val}</div>'
                  f'<div class="stat-lbl">{label}</div>'
                  f'</div>')
-    # Unrealized P&L — id lets the JS update the value + class live
+    # Cumulative P/L — id lets the JS add the live unrealized component
     html += (f'<div class="stat-card">'
-             f'<div class="stat-val {upnl_cls}" id="unrealized-pnl-val">{upnl_val}</div>'
-             f'<div class="stat-lbl">Unrealized P&L</div>'
+             f'<div class="stat-val {pnl_cls}" id="unrealized-pnl-val" '
+             f'data-realized="{realized_pnl:.4f}">{pnl_val}</div>'
+             f'<div class="stat-lbl">Cumulative P/L</div>'
              f'</div>')
     html += '</div>'
     return html
@@ -1198,20 +1230,30 @@ def _build_scoreboard_html(rows: list[dict]) -> str:
 def _current_week_str() -> str:
     """
     Return the best available ISO week string.
-    Prefers the current week if an entry file exists, otherwise the most
-    recent week that HAS an entry file. Never imports new_week (avoids
-    pulling in fredapi which is not needed for site builds).
+
+    Priority:
+      1. NEXT week if its entry file exists (forward-looking — Sunday picks
+         posted ahead of Monday's trading week should display that week's view).
+      2. Current week if its file exists.
+      3. Most recent past week with an entry file.
+      4. Today's ISO week as last-resort fallback.
     """
     today = date.today()
     iso   = today.isocalendar()
-    # Walk back up to 8 weeks to find the latest entry file
+    # 1) Check NEXT week first (Sunday picks → trade Monday)
+    next_week = today + timedelta(days=7)
+    ni = next_week.isocalendar()
+    nw = f"{ni.year}-W{ni.week:02d}"
+    if (ENTRIES_DIR / f"{nw}.md").exists():
+        return nw
+    # 2-3) Walk back up to 8 weeks
     for offset in range(8):
         check_date = today - timedelta(days=7 * offset)
         ci = check_date.isocalendar()
         w  = f"{ci.year}-W{ci.week:02d}"
         if (ENTRIES_DIR / f"{w}.md").exists():
             return w
-    # Absolute fallback: just use today's ISO week
+    # 4) Absolute fallback
     return f"{iso.year}-W{iso.week:02d}"
 
 
@@ -1289,6 +1331,7 @@ def build_site(week_str: str | None = None) -> Path:
             try:
                 _instr  = str(_pr.get("instrument_type", "equity")).lower()
                 _is_opt = _instr in ("call", "put")
+                _is_pending = str(_pr.get("status","")).lower() == "pending"
                 _p = {
                     "id":            str(_pr.get("pick_id", "")).replace("-", ""),
                     "ticker":        str(_pr.get("ticker", "")),
@@ -1303,6 +1346,7 @@ def build_site(week_str: str | None = None) -> Path:
                     "gamma":         _sfloat(_pr.get("gamma"),  0.0),
                     "build_premium": 0.0,   # filled below for options
                     "build_spot":    0.0,   # filled below
+                    "pending":       _is_pending,    # if True, JS skips live P&L
                 }
                 if _is_opt:
                     _p["strike"] = _sfloat(_pr.get("strike"), 0.0)
@@ -1459,15 +1503,6 @@ def build_site(week_str: str | None = None) -> Path:
   <section>
     <div class="section-label">🌐 Cross-Asset Scoreboard</div>
     {scoreboard_html}
-  </section>
-
-  <section>
-    <div class="section-label">📝 My Read{auto_note}</div>
-    <div class="prose-card" style="font-size:13.5px;line-height:1.75">
-      {narrative_html}
-      <h3>The Trade Rationale</h3>
-      {my_view_html}
-    </div>
   </section>
 
 </div>
