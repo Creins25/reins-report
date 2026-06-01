@@ -353,7 +353,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "b05b0eb4", "ticker": "CNC", "entry": 59.6, "direction": "long", "stop": 55.0, "target": 65.0, "instrument": "call", "entry_premium": 1.93, "premium": 1.93, "delta": 0.4, "gamma": 0.05, "build_premium": 3.475, "build_spot": 59.6, "pending": true, "strike": 60.0, "expiry": "2026-07-17"}, {"id": "c55b6231", "ticker": "CLX", "entry": 90.02, "direction": "short", "stop": 95.0, "target": 80.0, "instrument": "put", "entry_premium": 3.15, "premium": 3.15, "delta": -0.35, "gamma": 0.04, "build_premium": 3.95, "build_spot": 90.02, "pending": true, "strike": 90.0, "expiry": "2026-07-17"}, {"id": "0bb9a629", "ticker": "MO", "entry": 69.58, "direction": "short", "stop": 74.0, "target": 72.0, "instrument": "call", "entry_premium": -0.47, "premium": -0.47, "delta": -0.2, "gamma": -0.03, "build_premium": 0.925, "build_spot": 69.58, "pending": true, "strike": 72.0, "expiry": "2026-07-17"}];
+  var PICKS = [{"id": "b05b0eb4", "ticker": "CNC", "entry": 59.6, "direction": "long", "stop": 55.0, "target": 65.0, "instrument": "call", "entry_premium": 1.93, "premium": 1.93, "delta": 0.4, "gamma": 0.05, "build_premium": 1.93, "build_spot": 59.6, "pending": true, "strike": 60.0, "expiry": "2026-07-17"}, {"id": "c55b6231", "ticker": "CLX", "entry": 90.02, "direction": "short", "stop": 95.0, "target": 80.0, "instrument": "put", "entry_premium": 3.15, "premium": 3.15, "delta": -0.35, "gamma": 0.04, "build_premium": 3.15, "build_spot": 90.02, "pending": true, "strike": 90.0, "expiry": "2026-07-17"}, {"id": "0bb9a629", "ticker": "MO", "entry": 69.58, "direction": "short", "stop": 74.0, "target": 72.0, "instrument": "call", "entry_premium": -0.47, "premium": -0.47, "delta": -0.2, "gamma": -0.03, "build_premium": 0.47, "build_spot": 69.58, "pending": true, "strike": 72.0, "expiry": "2026-07-17"}];
 
   // CORS proxies — race for stock price only (option prices come from build time)
   var PROXIES = [
@@ -463,6 +463,18 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     return { pct: pct, dollar: null, isOpt: false };
   }
 
+  // ── Auto-promote pending → open once market has been open ≥5 min ──────
+  // (assumes Carter's GTC limit orders filled at the open)
+  function isEffectivelyOpen(pick) {
+    if (!pick.pending) return true;
+    var et  = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
+    var day = et.getDay();
+    if (day === 0 || day === 6) return false;       // weekend = still pending
+    var mins = et.getHours() * 60 + et.getMinutes();
+    // Treat as live if it's a weekday AND we're past 9:35 AM ET (open + 5 min)
+    return mins >= 575 && mins < 960;
+  }
+
   // ── Update one card ───────────────────────────────────────────────────────
   function updateCard(pick, liveSpot) {
     var cpEl   = document.getElementById('cp-'      + pick.id);
@@ -471,11 +483,11 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     var fillEl = document.getElementById('pfill-'   + pick.id);
     if (!cpEl) return;
 
-    // ── Pending picks: show "PENDING MONDAY OPEN" — no P&L ─────────────
-    if (pick.pending) {
+    // ── Pending picks BEFORE market open: show "PENDING" — no P&L ──────
+    if (pick.pending && !isEffectivelyOpen(pick)) {
       if (cpEl)  cpEl.textContent  = 'PENDING';
       if (pnlEl) {
-        pnlEl.textContent = 'Place Mon AM';
+        pnlEl.textContent = 'Fills Mon 9:30';
         pnlEl.className   = 'pnl-pill muted';
       }
       if (wrapEl) wrapEl.className = 'metric-val muted';
@@ -485,6 +497,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       }
       return;
     }
+    // Pending picks AFTER market open: fall through and track P&L live
 
     var pnl  = computePnl(pick, liveSpot);
     var pct  = pnl.pct;
@@ -524,7 +537,9 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
     var liveTotal = 0, liveCount = 0;
     PICKS.forEach(function (pick) {
-      if (pick.pending) return;          // pending picks contribute 0
+      // Pending picks contribute 0 BEFORE market open, but DO contribute
+      // once market opens (assumed-filled at the entry premium baseline)
+      if (pick.pending && !isEffectivelyOpen(pick)) return;
       var sp  = livePrices[pick.id];
       var pnl = computePnl(pick, sp != null ? sp : null);
       liveTotal += pnl.pct;
@@ -542,12 +557,15 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   // Render initial state from build_premium before any API call
   function initCards() {
     PICKS.forEach(function (pick) {
-      if (pick.pending) {
-        updateCard(pick, null);          // show PENDING placeholder
-      } else {
-        updateCard(pick, pick.build_spot > 0 ? pick.build_spot : pick.entry);
-        livePrices[pick.id] = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      // Pre-market-open pending picks show "PENDING" placeholder
+      if (pick.pending && !isEffectivelyOpen(pick)) {
+        updateCard(pick, null);
+        return;
       }
+      // Otherwise initialize at entry baseline (will be replaced by live fetch)
+      var startSpot = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      updateCard(pick, startSpot);
+      livePrices[pick.id] = startSpot;
     });
     updateUnrealizedPnl();
   }
@@ -563,8 +581,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
         return;
       }
       var pick = PICKS[idx++];
-      // Skip pending picks — they show "PENDING" and don't need live data
-      if (pick.pending) { setTimeout(next, 0); return; }
+      // Skip pending picks ONLY if market hasn't opened yet (still showing PENDING)
+      if (pick.pending && !isEffectivelyOpen(pick)) {
+        setTimeout(next, 0); return;
+      }
       var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
                + pick.ticker + '?interval=1m&range=1d&_=' + Date.now();
 

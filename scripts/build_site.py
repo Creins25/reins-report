@@ -485,6 +485,18 @@ SCRIPT_V5 = r'''(function () {
     return { pct: pct, dollar: null, isOpt: false };
   }
 
+  // ── Auto-promote pending → open once market has been open ≥5 min ──────
+  // (assumes Carter's GTC limit orders filled at the open)
+  function isEffectivelyOpen(pick) {
+    if (!pick.pending) return true;
+    var et  = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
+    var day = et.getDay();
+    if (day === 0 || day === 6) return false;       // weekend = still pending
+    var mins = et.getHours() * 60 + et.getMinutes();
+    // Treat as live if it's a weekday AND we're past 9:35 AM ET (open + 5 min)
+    return mins >= 575 && mins < 960;
+  }
+
   // ── Update one card ───────────────────────────────────────────────────────
   function updateCard(pick, liveSpot) {
     var cpEl   = document.getElementById('cp-'      + pick.id);
@@ -493,11 +505,11 @@ SCRIPT_V5 = r'''(function () {
     var fillEl = document.getElementById('pfill-'   + pick.id);
     if (!cpEl) return;
 
-    // ── Pending picks: show "PENDING MONDAY OPEN" — no P&L ─────────────
-    if (pick.pending) {
+    // ── Pending picks BEFORE market open: show "PENDING" — no P&L ──────
+    if (pick.pending && !isEffectivelyOpen(pick)) {
       if (cpEl)  cpEl.textContent  = 'PENDING';
       if (pnlEl) {
-        pnlEl.textContent = 'Place Mon AM';
+        pnlEl.textContent = 'Fills Mon 9:30';
         pnlEl.className   = 'pnl-pill muted';
       }
       if (wrapEl) wrapEl.className = 'metric-val muted';
@@ -507,6 +519,7 @@ SCRIPT_V5 = r'''(function () {
       }
       return;
     }
+    // Pending picks AFTER market open: fall through and track P&L live
 
     var pnl  = computePnl(pick, liveSpot);
     var pct  = pnl.pct;
@@ -546,7 +559,9 @@ SCRIPT_V5 = r'''(function () {
 
     var liveTotal = 0, liveCount = 0;
     PICKS.forEach(function (pick) {
-      if (pick.pending) return;          // pending picks contribute 0
+      // Pending picks contribute 0 BEFORE market open, but DO contribute
+      // once market opens (assumed-filled at the entry premium baseline)
+      if (pick.pending && !isEffectivelyOpen(pick)) return;
       var sp  = livePrices[pick.id];
       var pnl = computePnl(pick, sp != null ? sp : null);
       liveTotal += pnl.pct;
@@ -564,12 +579,15 @@ SCRIPT_V5 = r'''(function () {
   // Render initial state from build_premium before any API call
   function initCards() {
     PICKS.forEach(function (pick) {
-      if (pick.pending) {
-        updateCard(pick, null);          // show PENDING placeholder
-      } else {
-        updateCard(pick, pick.build_spot > 0 ? pick.build_spot : pick.entry);
-        livePrices[pick.id] = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      // Pre-market-open pending picks show "PENDING" placeholder
+      if (pick.pending && !isEffectivelyOpen(pick)) {
+        updateCard(pick, null);
+        return;
       }
+      // Otherwise initialize at entry baseline (will be replaced by live fetch)
+      var startSpot = pick.build_spot > 0 ? pick.build_spot : pick.entry;
+      updateCard(pick, startSpot);
+      livePrices[pick.id] = startSpot;
     });
     updateUnrealizedPnl();
   }
@@ -585,8 +603,10 @@ SCRIPT_V5 = r'''(function () {
         return;
       }
       var pick = PICKS[idx++];
-      // Skip pending picks — they show "PENDING" and don't need live data
-      if (pick.pending) { setTimeout(next, 0); return; }
+      // Skip pending picks ONLY if market hasn't opened yet (still showing PENDING)
+      if (pick.pending && !isEffectivelyOpen(pick)) {
+        setTimeout(next, 0); return;
+      }
       var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
                + pick.ticker + '?interval=1m&range=1d&_=' + Date.now();
 
@@ -1353,13 +1373,20 @@ def build_site(week_str: str | None = None) -> Path:
                     _exp = str(_pr.get("expiry", "")).strip()
                     if _exp and len(_exp) >= 10:
                         _p["expiry"] = _exp[:10]
-                        _bprem, _bspot = _fetch_build_premium(
-                            _p["ticker"], _exp, _p["strike"], _instr
-                        )
-                        if _bprem is not None:
-                            _p["build_premium"] = round(_bprem, 4)
-                        if _bspot is not None:
-                            _p["build_spot"] = round(_bspot, 4)
+                        # For PENDING picks (spreads about to be placed), use
+                        # entry_premium as cost basis — not the single-leg yfinance
+                        # mid (which doesn't match the spread net debit).
+                        if _is_pending:
+                            _p["build_premium"] = abs(_p["entry_premium"]) or 0.01
+                            _p["build_spot"]    = _p["entry"]
+                        else:
+                            _bprem, _bspot = _fetch_build_premium(
+                                _p["ticker"], _exp, _p["strike"], _instr
+                            )
+                            if _bprem is not None:
+                                _p["build_premium"] = round(_bprem, 4)
+                            if _bspot is not None:
+                                _p["build_spot"] = round(_bspot, 4)
                 else:
                     # For equities, build_spot = live spot (used as delta-adj anchor)
                     try:
