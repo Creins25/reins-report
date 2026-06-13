@@ -469,6 +469,11 @@ SCRIPT_V5 = r'''(function () {
       var estPrem  = pick.build_premium + pick.delta * dS;
       if (estPrem < 0.01) estPrem = 0.01;          // floor at $0.01
       var premChg  = estPrem - pick.entry_premium;
+      // CREDIT SPREADS: you collected premium at entry; you PAY to close.
+      // Higher current "cost to close" = WORSE for the seller → flip sign.
+      if (pick.is_credit) {
+        premChg = -premChg;
+      }
       return {
         pct:    premChg / pick.entry_premium * 100,
         dollar: premChg * 100,
@@ -1321,18 +1326,14 @@ def build_site(week_str: str | None = None) -> Path:
         try:
             import yfinance as yf
             t = yf.Ticker(ticker)
-            # Find nearest available expiry to the stored date
             available = t.options
             if not available:
                 return None, None
-            # Pick the closest available expiry
             from datetime import datetime as _dt
             target_dt = _dt.strptime(expiry_str[:10], "%Y-%m-%d")
             best_exp  = min(available, key=lambda e: abs((_dt.strptime(e, "%Y-%m-%d") - target_dt).days))
-            # Get chain
             chain = t.option_chain(best_exp)
             contracts = chain.calls if instrument.lower() == "call" else chain.puts
-            # Find nearest strike
             row = contracts[abs(contracts["strike"] - float(strike)) < 0.01]
             if row.empty:
                 row = contracts.iloc[(contracts["strike"] - float(strike)).abs().argsort()[:1]]
@@ -1342,6 +1343,45 @@ def build_site(week_str: str | None = None) -> Path:
             mid  = (bid + ask) / 2 if bid > 0 and ask > 0 else float(r.get("lastPrice") or 0)
             spot = float(t.fast_info.last_price or 0)
             return (mid if mid > 0 else None), (spot if spot > 0 else None)
+        except Exception:
+            return None, None
+
+    def _fetch_spread_net(ticker, expiry_str, long_strike, short_strike, kind, spread_kind):
+        """For a vertical spread, fetch BOTH legs and return the actual net debit
+        (or credit equivalent for premium-sell spreads). Returns (net_mid, spot)
+        or (None, None) on failure.
+        kind = 'call' or 'put' (the option type — both legs same type for vertical).
+        spread_kind = 'bull_call' / 'bear_put' (debit) or 'bear_call' / 'bull_put' (credit).
+        """
+        try:
+            import yfinance as yf
+            t = yf.Ticker(ticker)
+            available = t.options
+            if not available:
+                return None, None
+            from datetime import datetime as _dt
+            target_dt = _dt.strptime(expiry_str[:10], "%Y-%m-%d")
+            best_exp  = min(available, key=lambda e: abs((_dt.strptime(e, "%Y-%m-%d") - target_dt).days))
+            chain = t.option_chain(best_exp)
+            contracts = chain.calls if kind == "call" else chain.puts
+
+            def _leg(strike):
+                row = contracts[abs(contracts["strike"] - float(strike)) < 0.01]
+                if row.empty:
+                    row = contracts.iloc[(contracts["strike"] - float(strike)).abs().argsort()[:1]]
+                r = row.iloc[0]
+                bid = float(r.get("bid") or 0); ask = float(r.get("ask") or 0)
+                return (bid + ask) / 2 if bid > 0 and ask > 0 else float(r.get("lastPrice") or 0)
+
+            long_mid  = _leg(long_strike)
+            short_mid = _leg(short_strike)
+            spot = float(t.fast_info.last_price or 0)
+
+            # DEBIT spreads (bull_call, bear_put): net = long - short (positive = cost)
+            # CREDIT spreads (bear_call, bull_put): net = long - short (negative = collected)
+            # The JS computes (current_value - entry_premium) so we just need consistent sign.
+            net = long_mid - short_mid
+            return (net if net != 0 else None), (spot if spot > 0 else None)
         except Exception:
             return None, None
 
@@ -1371,15 +1411,40 @@ def build_site(week_str: str | None = None) -> Path:
                 if _is_opt:
                     _p["strike"] = _sfloat(_pr.get("strike"), 0.0)
                     _exp = str(_pr.get("expiry", "")).strip()
+                    _short_strike = _sfloat(_pr.get("short_strike"), 0.0)
+                    _spread_kind  = str(_pr.get("spread_kind", "")).strip()
+
                     if _exp and len(_exp) >= 10:
                         _p["expiry"] = _exp[:10]
-                        # For PENDING picks (spreads about to be placed), use
-                        # entry_premium as cost basis — not the single-leg yfinance
-                        # mid (which doesn't match the spread net debit).
+
                         if _is_pending:
+                            # Pending picks: use entry_premium as cost basis
                             _p["build_premium"] = abs(_p["entry_premium"]) or 0.01
                             _p["build_spot"]    = _p["entry"]
+                        elif _short_strike > 0:
+                            # Vertical SPREAD position: fetch both legs, compute net
+                            _is_credit = _spread_kind in ("bear_call", "bull_put")
+                            _p["is_credit"]   = _is_credit
+                            _p["short_strike"] = _short_strike
+                            _p["spread_kind"]  = _spread_kind
+
+                            _bprem, _bspot = _fetch_spread_net(
+                                _p["ticker"], _exp,
+                                _p["strike"], _short_strike, _instr, _spread_kind
+                            )
+                            if _bprem is not None:
+                                # Always store positive "current cost to close" semantically.
+                                # For debit spread → cost to close = current spread mid
+                                # For credit spread → cost to close = what you'd PAY to buy back
+                                _p["build_premium"] = round(abs(_bprem), 4)
+                            if _bspot is not None:
+                                _p["build_spot"] = round(_bspot, 4)
+                            # Normalize entry_premium to POSITIVE = absolute cost basis
+                            if _p["entry_premium"] < 0:
+                                _p["entry_premium"] = abs(_p["entry_premium"])
+                                _p["premium"]       = _p["entry_premium"]
                         else:
+                            # Single-leg option (not a spread)
                             _bprem, _bspot = _fetch_build_premium(
                                 _p["ticker"], _exp, _p["strike"], _instr
                             )
