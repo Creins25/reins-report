@@ -377,7 +377,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 SCRIPT_V5 = r'''(function () {
   var PICKS = __PICKS_JSON__;
 
-  // CORS proxies — race for stock price only (option prices come from build time)
+  // CORS proxies: race for stock price only (option prices come from build time)
   var PROXIES = [
     function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) + '&_=' + Date.now(); },
     function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); }
@@ -510,7 +510,7 @@ SCRIPT_V5 = r'''(function () {
     var fillEl = document.getElementById('pfill-'   + pick.id);
     if (!cpEl) return;
 
-    // ── Pending picks BEFORE market open: show "PENDING" — no P&L ──────
+    // ── Pending picks BEFORE market open: show "PENDING", no P&L ──────
     if (pick.pending && !isEffectivelyOpen(pick)) {
       if (cpEl)  cpEl.textContent  = 'PENDING';
       if (pnlEl) {
@@ -666,12 +666,12 @@ def _pnl_class(val) -> str:
 
 def _pnl_str(val, suffix="%") -> str:
     if val is None or (isinstance(val, float) and pd.isna(val)):
-        return "—"
+        return "n/a"
     return f"{float(val):+.1f}{suffix}"
 
 def _chg_class(s: str) -> str:
     s = s.strip()
-    if s in ("N/A", "—", ""):
+    if s in ("N/A", "n/a", "—", ""):
         return "flat"
     return "up" if s.startswith("+") else ("down" if s.startswith("-") else "flat")
 
@@ -692,17 +692,17 @@ def _risk_reward(entry, stop, target, direction="long") -> tuple[str, float]:
         risk   = (e - s) if direction == "long" else (s - e)
         reward = (t - e) if direction == "long" else (e - t)
         if risk <= 0:
-            return "R/R —", 0.0
+            return "R/R n/a", 0.0
         ratio = reward / risk
         return f"R/R {ratio:.1f}:1", ratio
     except Exception:
-        return "R/R —", 0.0
+        return "R/R n/a", 0.0
 
 def _conviction_badge(n) -> tuple[str, str]:
     try:
         n = int(n)
     except Exception:
-        return "—", "b-explore"
+        return "n/a", "b-explore"
     if n >= 5: return "High Conviction", "b-high"
     if n >= 4: return "Strong",          "b-above"
     if n >= 3: return "Moderate",        "b-moderate"
@@ -713,9 +713,9 @@ def _safe(v, decimals=2, prefix="$") -> str:
     try:
         return f"{prefix}{float(v):,.{decimals}f}"
     except Exception:
-        return "—"
+        return "n/a"
 
-def _safe_f(v, decimals=3, fallback="—") -> str:
+def _safe_f(v, decimals=3, fallback="n/a") -> str:
     try:
         return f"{float(v):.{decimals}f}"
     except Exception:
@@ -799,7 +799,7 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
 
     return f"""
     <div class="pick-chart">
-      <div class="chart-label">30-Day Price — {ticker}</div>
+      <div class="chart-label">30-Day Price · {ticker}</div>
       <div class="chart-wrap">{svg}</div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target ${target:.0f}</span>
@@ -839,37 +839,37 @@ def _auto_narrative(scoreboard_rows: list[dict]) -> str:
     gold_dn  = str(gold_w).startswith('-')
 
     rut_note = (
-        f"Russell 2000 ran {rut_w} too — when small caps show up like that it means the rally "
+        f"Russell 2000 ran {rut_w} too. When small caps show up like that it means the rally "
         f"has real breadth, not just a handful of mega caps holding the index up."
         if rut_up else
-        f"Russell 2000 was {rut_w} — small caps are still lagging, which tells me this is a "
+        f"Russell 2000 was {rut_w}. Small caps are still lagging, which tells me this is a "
         f"narrower rally than the headline numbers suggest."
     )
 
     oil_note = (
-        f"WTI dropped {wti_w} to {wti_v} ({wti_y} YTD) — oil pulling back removes the main "
+        f"WTI dropped {wti_w} to {wti_v} ({wti_y} YTD). Oil pulling back removes the main "
         f"inflation tail risk the Fed was watching and gives them cover to hold rates. "
         f"That's good for growth and for bank spreads."
         if wti_down else
-        f"WTI pushed to {wti_v} ({wti_w} WTD, {wti_y} YTD) — oil creeping higher is worth "
+        f"WTI pushed to {wti_v} ({wti_w} WTD, {wti_y} YTD). Oil creeping higher is worth "
         f"watching. Persistent energy inflation complicates the Fed's path."
     )
 
     p1 = (
         f"S&P {'had a solid week' if spx_up else 'pulled back'}, closing at {spx_v} "
-        f"({spx_w} WTD, {spx_y} YTD). Nasdaq at {ndx_v} ({ndx_w} WTD, {ndx_y} YTD) — "
+        f"({spx_w} WTD, {spx_y} YTD). Nasdaq at {ndx_v} ({ndx_w} WTD, {ndx_y} YTD). "
         f"tech is still the engine and I don't see that changing. {rut_note} "
         f"VIX at {vix_v} ({vix_w} WTD), MOVE at {move} ({move_w} WTD). Both quiet. "
-        f"That's the ideal setup for holding calls — you get the upside without vol eating your premium. "
+        f"That's the ideal setup for holding calls. You get the upside without vol eating your premium. "
         f"10-year sitting at {us10y}, 2s10s at {spread}. "
         f"Curve steepening is real money for JPM's NIM every quarter."
     )
 
     p2 = (
         f"{oil_note} "
-        f"Gold {'eased to' if gold_dn else 'moved to'} {gold_v} ({gold_w} WTD) — "
+        f"Gold {'eased to' if gold_dn else 'moved to'} {gold_v} ({gold_w} WTD). "
         f"{'nobody rushing to safe havens, fits the risk-on tone.' if gold_dn else 'worth watching if it keeps going.'} "
-        f"Dollar at {dxy_v} ({dxy_w} WTD) — flat, no FX headwind baked into earnings. "
+        f"Dollar at {dxy_v} ({dxy_w} WTD). Flat, no FX headwind baked into earnings. "
         f"The stat I keep coming back to: XLF is {xlf_y} YTD vs XLK at {xlk_y} YTD. "
         f"That spread doesn't stay this wide in a sustained bull market. That's the JPM trade in one line."
     )
@@ -942,7 +942,7 @@ def _build_ticker_html(rows: list[dict]) -> str:
         row = lookup.get(label)
         if not row:
             continue
-        close = row.get('close','—')
+        close = row.get('close','n/a')
         chg   = row.get('chg_1w','')
         cls   = _chg_class(chg)
         items.append(
@@ -1008,12 +1008,12 @@ def _build_options_block(row) -> str:
     expiry      = str(row.get('expiry',''))[:10]
     premium     = _safe(row.get('premium_paid',''))
     break_even  = _safe(row.get('break_even',''))
-    leverage    = _safe_f(row.get('leverage',''), 1, '—')
-    delta       = _safe_f(row.get('delta',''), 3, '—')
-    gamma       = _safe_f(row.get('gamma',''), 4, '—')
-    theta       = _safe_f(row.get('theta_daily',''), 3, '—')
-    vega        = _safe_f(row.get('vega_1pct',''), 3, '—')
-    iv_pct      = f"{float(row.get('iv_used',0))*100:.1f}%" if row.get('iv_used') not in ('',[],None) and str(row.get('iv_used','')) != '' else '—'
+    leverage    = _safe_f(row.get('leverage',''), 1, 'n/a')
+    delta       = _safe_f(row.get('delta',''), 3, 'n/a')
+    gamma       = _safe_f(row.get('gamma',''), 4, 'n/a')
+    theta       = _safe_f(row.get('theta_daily',''), 3, 'n/a')
+    vega        = _safe_f(row.get('vega_1pct',''), 3, 'n/a')
+    iv_pct      = f"{float(row.get('iv_used',0))*100:.1f}%" if row.get('iv_used') not in ('',[],None) and str(row.get('iv_used','')) != '' else 'n/a'
 
     try:
         theta_val = float(row.get('theta_daily',0))
@@ -1031,7 +1031,7 @@ def _build_options_block(row) -> str:
 
     return f"""
     <div class="options-block">
-      <div class="options-title">{type_label} Option Details — Max Loss = Premium Paid</div>
+      <div class="options-title">{type_label} Option Details · Max Loss = Premium Paid</div>
       <div class="options-row">
         <div class="opt-item">
           <label>Strike</label>
@@ -1100,7 +1100,7 @@ def _build_entry_timing(row) -> str:
         return ""
     return f"""
     <div class="entry-timing">
-      <div class="entry-timing-title">📅 When to Buy — Entry Timing &amp; Disclaimer</div>
+      <div class="entry-timing-title">📅 When to Buy · Entry Timing &amp; Disclaimer</div>
       <div class="entry-timing-body">{note}</div>
     </div>"""
 
@@ -1142,7 +1142,7 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
         try:
             risk_display = f'<span class="size-pill">{float(risk_pct):.1f}% of account</span>'
         except (ValueError, TypeError):
-            risk_display = '<span style="color:var(--text-light);font-size:11px">—</span>'
+            risk_display = '<span style="color:var(--text-light);font-size:11px">n/a</span>'
 
         # Instrument badge
         if instrument == 'call':
@@ -1248,9 +1248,9 @@ def _build_scoreboard_html(rows: list[dict]) -> str:
         c1 = _chg_class(row.get('chg_1w',''))
         c2 = _chg_class(row.get('chg_ytd',''))
         html += (f'<tr><td class="nm">{name}</td>'
-                 f'<td class="r">{row.get("close","—")}</td>'
-                 f'<td class="r {c1}">{row.get("chg_1w","—")}</td>'
-                 f'<td class="r {c2}">{row.get("chg_ytd","—")}</td></tr>')
+                 f'<td class="r">{row.get("close","n/a")}</td>'
+                 f'<td class="r {c1}">{row.get("chg_1w","n/a")}</td>'
+                 f'<td class="r {c2}">{row.get("chg_ytd","n/a")}</td></tr>')
     html += '</tbody></table></div>'
     return html
 
@@ -1484,7 +1484,7 @@ def build_site(week_str: str | None = None) -> Path:
 
     written_view = _read_section(nl_text, "My View")
     my_view_html = _md_to_html(written_view) if written_view else (
-        "<em>My View section not yet written — fill it in the journal entry.</em>"
+        "<em>My View section not yet written. Fill it in the journal entry.</em>"
     )
 
     # Header metadata
@@ -1544,7 +1544,7 @@ def build_site(week_str: str | None = None) -> Path:
       <div>
         <div class="pub-eyebrow">Independent Research · Carter Reins</div>
         <div class="pub-name">The Reins Report</div>
-        <div class="pub-tagline">Equity &amp; options research — not financial advice</div>
+        <div class="pub-tagline">Equity &amp; options research · not financial advice</div>
       </div>
     </div>
     <div class="masthead-right">
