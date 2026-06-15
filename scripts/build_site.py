@@ -1571,19 +1571,17 @@ def build_site(week_str: str | None = None) -> Path:
   <div class="about-panel">
     <div class="about-avatar">CR</div>
     <div class="about-body">
-      <div class="about-name">Carter Reins — Aspiring Fund Manager</div>
+      <div class="about-name">Carter Reins, Aspiring Fund Manager</div>
       <div class="about-desc">
-        Finance student and full-time market obsessive. Three years of real trading in equities
-        and options — I built a framework around regime identification and I only take trades where
-        the fundamentals and the chart are telling the same story. Every pick needs a 3:1 R/R minimum
-        before it goes in the book. One high-conviction idea per week. Max drawdown I allow: 3%.
-        That's the whole game.
+        Finance student and full time market obsessive. Three years of real trading in equities
+        and options. I built a framework around regime identification and I only take trades where
+        the fundamentals and the chart are telling the same story. One high conviction idea per week.
+        Max drawdown I allow: 3%. That's the whole game.
       </div>
       <div class="about-tags">
         <span class="about-tag">3 Yrs Trading</span>
         <span class="about-tag">Options + Equity</span>
-        <span class="about-tag">Regime-First</span>
-        <span class="about-tag">3:1 R/R Min</span>
+        <span class="about-tag">Regime First</span>
         <span class="about-tag">Macro + Micro</span>
       </div>
     </div>
