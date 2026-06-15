@@ -354,12 +354,19 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <script>
   (function () {
   var PICKS = [{"id": "b05b0eb4", "ticker": "CNC", "entry": 59.6, "direction": "long", "stop": 55.0, "target": 65.0, "instrument": "call", "entry_premium": 1.93, "premium": 1.93, "delta": 0.4, "gamma": 0.05, "build_premium": 3.25, "build_spot": 65.19, "pending": false, "account_risk_pct": 11.6, "strike": 60.0, "expiry": "2026-07-17", "is_credit": false, "short_strike": 65.0, "spread_kind": "bull_call"}, {"id": "f354899b", "ticker": "BX", "entry": 122.79000091552734, "direction": "short", "stop": 128.0, "target": 110.0, "instrument": "put", "entry_premium": 5.28, "premium": 5.28, "delta": -0.3, "gamma": 0.04, "build_premium": 5.27, "build_spot": 122.79, "pending": false, "account_risk_pct": 10.6, "strike": 125.0, "expiry": "2026-07-17", "is_credit": false, "short_strike": 110.0, "spread_kind": "bear_put"}, {"id": "8297ccc3", "ticker": "SMCI", "entry": 30.459999084472656, "direction": "short", "stop": 39.0, "target": 37.0, "instrument": "call", "entry_premium": 0.48, "premium": 0.48, "delta": -0.2, "gamma": -0.04, "build_premium": 0.48, "build_spot": 30.46, "pending": false, "account_risk_pct": 5.0, "strike": 37.0, "expiry": "2026-07-17", "is_credit": true, "short_strike": 40.0, "spread_kind": "bear_call"}];
+  var SPY_BASE = 750.59;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
   var PROXIES = [
     function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) + '&_=' + Date.now(); },
-    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); }
+    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); },
+    function (u) { return 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u); }
   ];
+
+  // Track-record vs benchmark + freshness state (updated live)
+  var spyReturn     = null;  // SPY % return since inception (null until fetched)
+  var strategyTotal = 0;     // account-weighted strategy P/L %, set by updateUnrealizedPnl
+  var lastOk        = 0;     // ms timestamp of last successful fetch (stale-price guard)
 
   function via(pfn, url) {
     return fetch(pfn(url), {cache: 'no-store'}).then(function (r) {
@@ -405,6 +412,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     var map = {
       live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
       fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
+      delayed:  '<span style="color:#fbbf24;font-weight:700">⚠️ DELAYED · feed unavailable</span>',
       closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
       eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
     };
@@ -561,6 +569,43 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     var cls  = total > 0.005 ? 'gain' : (total < -0.005 ? 'loss' : 'muted');
     el.textContent = sign + total.toFixed(2) + '%';
     el.className   = 'stat-val ' + cls;
+
+    // Strategy total feeds the Alpha vs SPY stat
+    strategyTotal = total;
+    updateAlpha();
+  }
+
+  // ── Benchmark + Alpha ─────────────────────────────────────────────────────
+  // SPY return is fetched live; Alpha = strategy P/L minus SPY return over the
+  // same window (since the first pick). Before SPY fetches, we fall back to the
+  // build-time SPY return baked into the card's data-spybuild attribute.
+  function updateAlpha() {
+    var aEl = document.getElementById('alpha-val');
+    var sEl = document.getElementById('spy-return-val');
+    var spy = (spyReturn != null) ? spyReturn
+            : (aEl ? (parseFloat(aEl.getAttribute('data-spybuild') || '0') || 0) : 0);
+    if (sEl) {
+      var ss = spy >= 0 ? '+' : '';
+      sEl.textContent = ss + spy.toFixed(2) + '%';
+      sEl.className = 'stat-val ' + (spy > 0.005 ? 'gain' : spy < -0.005 ? 'loss' : 'muted');
+    }
+    if (aEl) {
+      var alpha = strategyTotal - spy;
+      var as = alpha >= 0 ? '+' : '';
+      aEl.textContent = as + alpha.toFixed(2) + '%';
+      aEl.className = 'stat-val ' + (alpha > 0.005 ? 'gain' : alpha < -0.005 ? 'loss' : 'muted');
+    }
+  }
+
+  function fetchSpy() {
+    if (!SPY_BASE) return;
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1m&range=1d&_=' + Date.now();
+    raceProxies(url)
+      .then(function (d) {
+        var sp = d.chart.result[0].meta.regularMarketPrice;
+        if (sp) { spyReturn = (sp / SPY_BASE - 1) * 100; updateAlpha(); }
+      })
+      .catch(function () {});
   }
 
   // Render initial state from build_premium before any API call
@@ -586,7 +631,14 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
     function next() {
       if (idx >= PICKS.length) {
-        if (updated > 0) { updateUnrealizedPnl(); stampTime(eod); }
+        if (updated > 0) {
+          lastOk = Date.now();
+          updateUnrealizedPnl();
+          stampTime(eod);
+        } else if (!eod && lastOk && (Date.now() - lastOk > 120000)) {
+          // No successful fetch in 2+ min while market is open: never imply LIVE
+          setIndicator('delayed');
+        }
         return;
       }
       var pick = PICKS[idx++];
@@ -619,10 +671,12 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       if (isMarketOpen()) {
         setIndicator('fetching');
         fetchPrices(false);
+        fetchSpy();
         setTimeout(tick, 30000);
       } else {
         setIndicator('fetching');
         fetchPrices(true);
+        fetchSpy();
       }
     }
     tick();
@@ -657,7 +711,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </div>
     <div class="masthead-right">
       <div class="pub-week">2026-W25</div>
-      <div class="pub-date">June 15 to June 21, 2026 · Updated Jun 15, 2026</div>
+      <div class="pub-date">June 15 to June 21, 2026 · Updated Jun 14, 2026</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
@@ -699,7 +753,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">9</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">3</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">6</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val loss" id="unrealized-pnl-val" data-realized="-7.4764">-7.48%</div><div class="stat-lbl">Cumulative P/L</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">9</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">3</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">6</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val loss" id="unrealized-pnl-val" data-realized="-7.4764">-7.48%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val loss" id="spy-return-val">-1.18%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val loss" id="alpha-val" data-spybuild="-1.1777">-6.30%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
   </section>
 
   <section>
@@ -816,7 +870,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
             <div class="pick-sizing-row">
               <span><strong>Position size:</strong> <span class="size-pill">11.6% of account</span></span>
-              <span><strong>Days held:</strong> 13d</span>
+              <span><strong>Days held:</strong> 12d</span>
               <span><strong>Instrument:</strong> Call</span>
               <span><strong>Entered:</strong> Jun 02, 2026</span>
             </div>
@@ -980,7 +1034,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
             <div class="pick-sizing-row">
               <span><strong>Position size:</strong> <span class="size-pill">10.6% of account</span></span>
-              <span><strong>Days held:</strong> 1d</span>
+              <span><strong>Days held:</strong> 0d</span>
               <span><strong>Instrument:</strong> Put</span>
               <span><strong>Entered:</strong> Jun 14, 2026</span>
             </div>
@@ -1144,7 +1198,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
             <div class="pick-sizing-row">
               <span><strong>Position size:</strong> <span class="size-pill">5.0% of account</span></span>
-              <span><strong>Days held:</strong> 1d</span>
+              <span><strong>Days held:</strong> 0d</span>
               <span><strong>Instrument:</strong> Call</span>
               <span><strong>Entered:</strong> Jun 14, 2026</span>
             </div>

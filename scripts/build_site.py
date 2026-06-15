@@ -376,12 +376,19 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 # __PICKS_JSON__ is replaced at build time.
 SCRIPT_V5 = r'''(function () {
   var PICKS = __PICKS_JSON__;
+  var SPY_BASE = __SPY_BASE__;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
   var PROXIES = [
     function (u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) + '&_=' + Date.now(); },
-    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); }
+    function (u) { return 'https://corsproxy.io/?' + encodeURIComponent(u) + '&_=' + Date.now(); },
+    function (u) { return 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u); }
   ];
+
+  // Track-record vs benchmark + freshness state (updated live)
+  var spyReturn     = null;  // SPY % return since inception (null until fetched)
+  var strategyTotal = 0;     // account-weighted strategy P/L %, set by updateUnrealizedPnl
+  var lastOk        = 0;     // ms timestamp of last successful fetch (stale-price guard)
 
   function via(pfn, url) {
     return fetch(pfn(url), {cache: 'no-store'}).then(function (r) {
@@ -427,6 +434,7 @@ SCRIPT_V5 = r'''(function () {
     var map = {
       live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
       fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
+      delayed:  '<span style="color:#fbbf24;font-weight:700">⚠️ DELAYED · feed unavailable</span>',
       closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
       eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
     };
@@ -583,6 +591,43 @@ SCRIPT_V5 = r'''(function () {
     var cls  = total > 0.005 ? 'gain' : (total < -0.005 ? 'loss' : 'muted');
     el.textContent = sign + total.toFixed(2) + '%';
     el.className   = 'stat-val ' + cls;
+
+    // Strategy total feeds the Alpha vs SPY stat
+    strategyTotal = total;
+    updateAlpha();
+  }
+
+  // ── Benchmark + Alpha ─────────────────────────────────────────────────────
+  // SPY return is fetched live; Alpha = strategy P/L minus SPY return over the
+  // same window (since the first pick). Before SPY fetches, we fall back to the
+  // build-time SPY return baked into the card's data-spybuild attribute.
+  function updateAlpha() {
+    var aEl = document.getElementById('alpha-val');
+    var sEl = document.getElementById('spy-return-val');
+    var spy = (spyReturn != null) ? spyReturn
+            : (aEl ? (parseFloat(aEl.getAttribute('data-spybuild') || '0') || 0) : 0);
+    if (sEl) {
+      var ss = spy >= 0 ? '+' : '';
+      sEl.textContent = ss + spy.toFixed(2) + '%';
+      sEl.className = 'stat-val ' + (spy > 0.005 ? 'gain' : spy < -0.005 ? 'loss' : 'muted');
+    }
+    if (aEl) {
+      var alpha = strategyTotal - spy;
+      var as = alpha >= 0 ? '+' : '';
+      aEl.textContent = as + alpha.toFixed(2) + '%';
+      aEl.className = 'stat-val ' + (alpha > 0.005 ? 'gain' : alpha < -0.005 ? 'loss' : 'muted');
+    }
+  }
+
+  function fetchSpy() {
+    if (!SPY_BASE) return;
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1m&range=1d&_=' + Date.now();
+    raceProxies(url)
+      .then(function (d) {
+        var sp = d.chart.result[0].meta.regularMarketPrice;
+        if (sp) { spyReturn = (sp / SPY_BASE - 1) * 100; updateAlpha(); }
+      })
+      .catch(function () {});
   }
 
   // Render initial state from build_premium before any API call
@@ -608,7 +653,14 @@ SCRIPT_V5 = r'''(function () {
 
     function next() {
       if (idx >= PICKS.length) {
-        if (updated > 0) { updateUnrealizedPnl(); stampTime(eod); }
+        if (updated > 0) {
+          lastOk = Date.now();
+          updateUnrealizedPnl();
+          stampTime(eod);
+        } else if (!eod && lastOk && (Date.now() - lastOk > 120000)) {
+          // No successful fetch in 2+ min while market is open: never imply LIVE
+          setIndicator('delayed');
+        }
         return;
       }
       var pick = PICKS[idx++];
@@ -641,10 +693,12 @@ SCRIPT_V5 = r'''(function () {
       if (isMarketOpen()) {
         setIndicator('fetching');
         fetchPrices(false);
+        fetchSpy();
         setTimeout(tick, 30000);
       } else {
         setIndicator('fetching');
         fetchPrices(true);
+        fetchSpy();
       }
     }
     tick();
@@ -994,6 +1048,28 @@ def _build_stats_html(stats: dict) -> str:
              f'data-realized="{realized_pnl:.4f}">{pnl_val}</div>'
              f'<div class="stat-lbl">Cumulative P/L</div>'
              f'</div>')
+
+    # Benchmark (SPY) + Alpha — only if we have a baseline. SPY return is the
+    # market over the same window; Alpha = strategy minus SPY (the number that
+    # actually matters). Both refreshed live by the JS; seeded from build time.
+    spy_ret  = stats.get("spy_return_build")
+    spy_base = stats.get("spy_base_price")
+    if spy_base and spy_ret is not None:
+        spy_cls = ("gain" if spy_ret > 0.005 else "loss" if spy_ret < -0.005 else "muted")
+        spy_val = f"{spy_ret:+.2f}%"
+        alpha_seed = realized_pnl - spy_ret
+        a_cls = ("gain" if alpha_seed > 0.005 else "loss" if alpha_seed < -0.005 else "muted")
+        a_val = f"{alpha_seed:+.2f}%"
+        html += (f'<div class="stat-card">'
+                 f'<div class="stat-val {spy_cls}" id="spy-return-val">{spy_val}</div>'
+                 f'<div class="stat-lbl">S&amp;P 500</div>'
+                 f'</div>')
+        html += (f'<div class="stat-card">'
+                 f'<div class="stat-val {a_cls}" id="alpha-val" '
+                 f'data-spybuild="{spy_ret:.4f}">{a_val}</div>'
+                 f'<div class="stat-lbl">Alpha vs SPY</div>'
+                 f'</div>')
+
     html += '</div>'
     return html
 
@@ -1286,6 +1362,39 @@ def _current_week_str() -> str:
     return f"{iso.year}-W{iso.week:02d}"
 
 
+def _spy_baseline():
+    """Baseline for the Alpha vs SPY stat.
+
+    Returns (inception_date_str, spy_base_price, spy_return_pct):
+      - inception_date = earliest date_added across all picks (track start)
+      - spy_base_price = SPY close on/after that date
+      - spy_return_pct = (current SPY / base - 1) * 100
+    Any failure returns (None, None, None) so the cards are simply omitted.
+    """
+    try:
+        from scripts.picks import _load_ledger
+        df = _load_ledger()
+        dates = [str(d).strip() for d in df["date_added"].tolist() if str(d).strip()]
+        if not dates:
+            return (None, None, None)
+        incept = min(dates)                 # ISO dates sort lexicographically
+        import yfinance as yf
+        hist = yf.Ticker("SPY").history(start=incept, auto_adjust=False)
+        if hist is None or hist.empty:
+            return (incept, None, None)
+        base = float(hist["Close"].iloc[0])
+        try:
+            cur = float(yf.Ticker("SPY").fast_info.last_price or 0)
+        except Exception:
+            cur = 0.0
+        if not cur:
+            cur = float(hist["Close"].iloc[-1])
+        ret = (cur / base - 1) * 100 if base else None
+        return (incept, round(base, 4), round(ret, 4) if ret is not None else None)
+    except Exception:
+        return (None, None, None)
+
+
 def build_site(week_str: str | None = None) -> Path:
     """Generate website/index.html. Returns output path."""
     from scripts.picks import get_open_picks, compute_track_record
@@ -1310,6 +1419,15 @@ def build_site(week_str: str | None = None) -> Path:
     except Exception:
         stats = {"total_picks":0,"open_picks":0,"closed_picks":0,
                  "win_rate":None,"avg_winner":None,"avg_loser":None}
+
+    # Benchmark baseline (SPY) for the Alpha vs SPY stat
+    try:
+        _inc, _spybase, _spyret = _spy_baseline()
+        stats["inception_date"]   = _inc or ""
+        stats["spy_base_price"]   = _spybase
+        stats["spy_return_build"] = _spyret
+    except Exception:
+        pass
 
     # Build picks JSON — include build-time option premiums so the browser
     # can compute accurate P&L = (current_premium - entry_premium) * 100
@@ -1472,6 +1590,7 @@ def build_site(week_str: str | None = None) -> Path:
                 pass
     picks_json  = json.dumps(_picks_js_list)
     script_html = SCRIPT_V5.replace('__PICKS_JSON__', picks_json)
+    script_html = script_html.replace('__SPY_BASE__', json.dumps(stats.get("spy_base_price") or 0))
 
     # Prose — fall back to auto-generated narrative if not written yet
     written_narrative = _read_section(nl_text, "Narrative")
