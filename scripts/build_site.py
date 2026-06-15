@@ -552,9 +552,14 @@ SCRIPT_V5 = r'''(function () {
     }
   }
 
-  // ── Aggregate Cumulative P/L ──────────────────────────────────────────────
-  // CumulP/L = realized P&L (from closed picks, served as data-realized attr)
-  //          + avg unrealized P&L of LIVE (non-pending) picks
+  // ── Aggregate Cumulative P/L (ACCOUNT-WEIGHTED) ───────────────────────────
+  // Every position's spread-return % is scaled by the % of the account it
+  // risks, so the realized (closed) and unrealized (open) pieces share one
+  // basis and add up to the real impact on the account as a % of account
+  // value. A naive average/sum of raw spread %s is meaningless because the
+  // picks are sized very differently.
+  //   CumulP/L = realized (data-realized attr, already account-weighted)
+  //            + Σ over open picks of  (risk% / 100) × spread-return%
   var livePrices = {};
 
   function updateUnrealizedPnl() {
@@ -562,18 +567,17 @@ SCRIPT_V5 = r'''(function () {
     if (!el || !PICKS || !PICKS.length) return;
     var realized = parseFloat(el.getAttribute('data-realized') || '0') || 0;
 
-    var liveTotal = 0, liveCount = 0;
+    var liveContrib = 0;
     PICKS.forEach(function (pick) {
       // Pending picks contribute 0 BEFORE market open, but DO contribute
       // once market opens (assumed-filled at the entry premium baseline)
       if (pick.pending && !isEffectivelyOpen(pick)) return;
       var sp  = livePrices[pick.id];
       var pnl = computePnl(pick, sp != null ? sp : null);
-      liveTotal += pnl.pct;
-      liveCount++;
+      var w   = (pick.account_risk_pct || 0) / 100;
+      liveContrib += pnl.pct * w;
     });
-    var avgLive = liveCount ? (liveTotal / liveCount) : 0;
-    var total   = realized + avgLive;
+    var total = realized + liveContrib;
 
     var sign = total >= 0 ? '+' : '';
     var cls  = total > 0.005 ? 'gain' : (total < -0.005 ? 'loss' : 'muted');
@@ -961,8 +965,8 @@ def _build_stats_html(stats: dict) -> str:
     closed  = stats.get("closed_picks",  0)
     pending = stats.get("pending_picks", 0)
 
-    # Cumulative P/L = sum of all REALIZED P&L from closed picks +
-    #                  (live unrealized from open picks, updated by JS)
+    # Cumulative P/L = account-weighted REALIZED P&L from closed picks +
+    #                  (account-weighted live unrealized from open picks, JS).
     # We seed the static value with realized only; JS adds the live component.
     realized_pnl = stats.get("cumulative_pnl_pct")
     if realized_pnl is None:
@@ -1407,6 +1411,9 @@ def build_site(week_str: str | None = None) -> Path:
                     "build_premium": 0.0,   # filled below for options
                     "build_spot":    0.0,   # filled below
                     "pending":       _is_pending,    # if True, JS skips live P&L
+                    # % of account this pick risks — used to account-weight
+                    # its contribution to the headline Cumulative P/L stat.
+                    "account_risk_pct": _sfloat(_pr.get("account_risk_pct"), 0.0),
                 }
                 if _is_opt:
                     _p["strike"] = _sfloat(_pr.get("strike"), 0.0)

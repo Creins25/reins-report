@@ -414,8 +414,17 @@ def compute_track_record() -> dict:
         by_sector[sector] = {"picks": len(grp), "wins": wins,
                              "win_rate": wins / len(grp)}
 
-    # ── Cumulative P/L: sum of realized P/L across every closed pick ─────
-    cumulative_pnl = float(closed_picks["realized_pnl_pct"].sum())
+    # ── Cumulative P/L: ACCOUNT-WEIGHTED realized P/L ───────────────────
+    # A raw sum of each pick's spread-return % is meaningless because the
+    # picks were sized very differently (e.g. CLX risked 6.3% of the
+    # account, META only 2%). We scale each pick's return by the % of the
+    # account it actually risked, so the sum is the real dollar impact on
+    # the account expressed as a % of account value.
+    closed_picks["account_risk_pct"] = pd.to_numeric(
+        closed_picks["account_risk_pct"], errors="coerce").fillna(0.0)
+    cumulative_pnl = float(
+        (closed_picks["realized_pnl_pct"] * closed_picks["account_risk_pct"] / 100.0).sum()
+    )
 
     return {
         **base,
