@@ -1367,32 +1367,65 @@ def _spy_baseline():
 
     Returns (inception_date_str, spy_base_price, spy_return_pct):
       - inception_date = earliest date_added across all picks (track start)
-      - spy_base_price = SPY close on/after that date
+      - spy_base_price = SPY close on/after that date (immutable history)
       - spy_return_pct = (current SPY / base - 1) * 100
-    Any failure returns (None, None, None) so the cards are simply omitted.
+
+    The base price is historical and never changes, so it is cached on disk
+    (data/spy_baseline.json). A transient yfinance failure then falls back to
+    the cached base + last-known return instead of dropping the Alpha/SPY
+    cards. Returns (None, None, None) only if there is no data AND no cache.
     """
+    import json as _json
+    cache_path = _PROJECT_ROOT / "data" / "spy_baseline.json"
+
+    def _load_cache():
+        try:
+            return _json.loads(cache_path.read_text())
+        except Exception:
+            return {}
+
+    cache = _load_cache()
     try:
         from scripts.picks import _load_ledger
         df = _load_ledger()
         dates = [str(d).strip() for d in df["date_added"].tolist() if str(d).strip()]
-        if not dates:
-            return (None, None, None)
-        incept = min(dates)                 # ISO dates sort lexicographically
-        import yfinance as yf
-        hist = yf.Ticker("SPY").history(start=incept, auto_adjust=False)
-        if hist is None or hist.empty:
-            return (incept, None, None)
-        base = float(hist["Close"].iloc[0])
-        try:
-            cur = float(yf.Ticker("SPY").fast_info.last_price or 0)
-        except Exception:
-            cur = 0.0
-        if not cur:
-            cur = float(hist["Close"].iloc[-1])
-        ret = (cur / base - 1) * 100 if base else None
-        return (incept, round(base, 4), round(ret, 4) if ret is not None else None)
+        incept = min(dates) if dates else cache.get("inception")
     except Exception:
+        incept = cache.get("inception")
+    if not incept:
         return (None, None, None)
+
+    # Base price: reuse cache when the inception matches; else fetch once.
+    base = cache.get("base") if cache.get("inception") == incept else None
+    if base is None:
+        try:
+            import yfinance as yf
+            hist = yf.Ticker("SPY").history(start=incept, auto_adjust=False)
+            if hist is not None and not hist.empty:
+                base = float(hist["Close"].iloc[0])
+        except Exception:
+            base = None
+    if base is None:
+        return (incept, None, None)        # no base and no cache: omit cards
+
+    # Current price: live if possible, else fall back to last cached return.
+    ret = cache.get("last_return")
+    try:
+        import yfinance as yf
+        cur = float(yf.Ticker("SPY").fast_info.last_price or 0)
+        if cur:
+            ret = (cur / base - 1) * 100
+    except Exception:
+        pass
+
+    try:
+        cache_path.write_text(_json.dumps({
+            "inception": incept, "base": round(base, 4),
+            "last_return": round(ret, 4) if ret is not None else None,
+        }))
+    except Exception:
+        pass
+    return (incept, round(base, 4), round(ret, 4) if ret is not None else None)
 
 
 def build_site(week_str: str | None = None) -> Path:
