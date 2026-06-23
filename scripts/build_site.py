@@ -522,7 +522,7 @@ SCRIPT_V5 = r'''(function () {
     if (pick.pending && !isEffectivelyOpen(pick)) {
       if (cpEl)  cpEl.textContent  = 'PENDING';
       if (pnlEl) {
-        pnlEl.textContent = 'Fills Mon 9:30';
+        pnlEl.textContent = 'Fills next open';
         pnlEl.className   = 'pnl-pill muted';
       }
       if (wrapEl) wrapEl.className = 'metric-val muted';
@@ -582,7 +582,10 @@ SCRIPT_V5 = r'''(function () {
       if (pick.pending && !isEffectivelyOpen(pick)) return;
       var sp  = livePrices[pick.id];
       var pnl = computePnl(pick, sp != null ? sp : null);
-      var w   = (pick.account_risk_pct || 0) / 100;
+      // pnl_weight = capital basis the return % is measured against, as a
+      // fraction of account (credit-collected for credit spreads, premium
+      // paid for debits). Falls back to account_risk_pct for older data.
+      var w   = ((pick.pnl_weight != null ? pick.pnl_weight : pick.account_risk_pct) || 0) / 100;
       liveContrib += pnl.pct * w;
     });
     var total = realized + liveContrib;
@@ -1576,7 +1579,17 @@ def build_site(week_str: str | None = None) -> Path:
                         _p["expiry"] = _exp[:10]
 
                         if _is_pending:
-                            # Pending picks: use entry_premium as cost basis
+                            # Pending picks: not placed yet, so seed at the entry
+                            # premium as cost basis (0% P/L until live). Still set
+                            # spread metadata + normalize the credit sign so the
+                            # math is correct the moment it promotes to open.
+                            if _short_strike > 0:
+                                _p["is_credit"]    = _spread_kind in ("bear_call", "bull_put")
+                                _p["short_strike"] = _short_strike
+                                _p["spread_kind"]  = _spread_kind
+                            if _p["entry_premium"] < 0:
+                                _p["entry_premium"] = abs(_p["entry_premium"])
+                                _p["premium"]       = _p["entry_premium"]
                             _p["build_premium"] = abs(_p["entry_premium"]) or 0.01
                             _p["build_spot"]    = _p["entry"]
                         elif _short_strike > 0:
@@ -1618,6 +1631,17 @@ def build_site(week_str: str | None = None) -> Path:
                         _p["build_spot"] = round(_bspot, 4)
                     except Exception:
                         _p["build_spot"] = _p["entry"]
+                # Account-weight basis for the Cumulative P/L stat: credit
+                # collected for credit spreads, premium paid otherwise. Mixing
+                # a "% of credit" return with a max-loss weight overstates P/L.
+                _risk = _p["account_risk_pct"]
+                if _p.get("is_credit"):
+                    _credit = abs(_p.get("entry_premium", 0.0))
+                    _width  = abs(_p.get("short_strike", 0.0) - _p.get("strike", 0.0))
+                    _p["pnl_weight"] = (round(_risk * _credit / (_width - _credit), 4)
+                                        if _width > _credit > 0 else _risk)
+                else:
+                    _p["pnl_weight"] = _risk
                 _picks_js_list.append(_p)
             except Exception:
                 pass

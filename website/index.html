@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>The Reins Report · 2026-W25</title>
+  <title>The Reins Report · 2026-W26</title>
   <style>
 :root {
   --bg:           #ffffff;
@@ -353,7 +353,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "f354899b", "ticker": "BX", "entry": 122.79000091552734, "direction": "short", "stop": 128.0, "target": 110.0, "instrument": "put", "entry_premium": 5.28, "premium": 5.28, "delta": -0.3, "gamma": 0.04, "build_premium": 4.825, "build_spot": 123.26, "pending": false, "account_risk_pct": 10.6, "strike": 125.0, "expiry": "2026-07-17", "is_credit": false, "short_strike": 110.0, "spread_kind": "bear_put"}, {"id": "8297ccc3", "ticker": "SMCI", "entry": 30.459999084472656, "direction": "short", "stop": 39.0, "target": 37.0, "instrument": "call", "entry_premium": 0.48, "premium": 0.48, "delta": -0.2, "gamma": -0.04, "build_premium": 0.92, "build_spot": 35.46, "pending": false, "account_risk_pct": 5.0, "strike": 37.0, "expiry": "2026-07-17", "is_credit": true, "short_strike": 40.0, "spread_kind": "bear_call"}];
+  var PICKS = [{"id": "a9dc2d76", "ticker": "TGT", "entry": 129.73, "direction": "short", "stop": 148.0, "target": 145.0, "instrument": "call", "entry_premium": 0.88, "premium": 0.88, "delta": -0.1, "gamma": -0.02, "build_premium": 0.88, "build_spot": 129.73, "pending": true, "account_risk_pct": 8.2, "strike": 145.0, "expiry": "2026-08-21", "is_credit": true, "short_strike": 150.0, "spread_kind": "bear_call", "pnl_weight": 1.7515}, {"id": "eeb73cb0", "ticker": "MDT", "entry": 79.27, "direction": "short", "stop": 87.0, "target": 85.0, "instrument": "call", "entry_premium": 0.47, "premium": 0.47, "delta": -0.14, "gamma": -0.03, "build_premium": 0.47, "build_spot": 79.27, "pending": true, "account_risk_pct": 4.1, "strike": 85.0, "expiry": "2026-08-21", "is_credit": true, "short_strike": 87.5, "spread_kind": "bear_call", "pnl_weight": 0.9493}, {"id": "f354899b", "ticker": "BX", "entry": 122.79000091552734, "direction": "short", "stop": 128.0, "target": 110.0, "instrument": "put", "entry_premium": 5.28, "premium": 5.28, "delta": -0.3, "gamma": 0.04, "build_premium": 4.825, "build_spot": 123.26, "pending": false, "account_risk_pct": 10.6, "strike": 125.0, "expiry": "2026-07-17", "is_credit": false, "short_strike": 110.0, "spread_kind": "bear_put", "pnl_weight": 10.6}, {"id": "8297ccc3", "ticker": "SMCI", "entry": 30.459999084472656, "direction": "short", "stop": 39.0, "target": 37.0, "instrument": "call", "entry_premium": 0.48, "premium": 0.48, "delta": -0.2, "gamma": -0.04, "build_premium": 0.92, "build_spot": 35.46, "pending": false, "account_risk_pct": 5.0, "strike": 37.0, "expiry": "2026-07-17", "is_credit": true, "short_strike": 40.0, "spread_kind": "bear_call", "pnl_weight": 0.9524}];
   var SPY_BASE = 750.59;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -500,7 +500,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     if (pick.pending && !isEffectivelyOpen(pick)) {
       if (cpEl)  cpEl.textContent  = 'PENDING';
       if (pnlEl) {
-        pnlEl.textContent = 'Fills Mon 9:30';
+        pnlEl.textContent = 'Fills next open';
         pnlEl.className   = 'pnl-pill muted';
       }
       if (wrapEl) wrapEl.className = 'metric-val muted';
@@ -560,7 +560,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       if (pick.pending && !isEffectivelyOpen(pick)) return;
       var sp  = livePrices[pick.id];
       var pnl = computePnl(pick, sp != null ? sp : null);
-      var w   = (pick.account_risk_pct || 0) / 100;
+      // pnl_weight = capital basis the return % is measured against, as a
+      // fraction of account (credit-collected for credit spreads, premium
+      // paid for debits). Falls back to account_risk_pct for older data.
+      var w   = ((pick.pnl_weight != null ? pick.pnl_weight : pick.account_risk_pct) || 0) / 100;
       liveContrib += pnl.pct * w;
     });
     var total = realized + liveContrib;
@@ -710,8 +713,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       </div>
     </div>
     <div class="masthead-right">
-      <div class="pub-week">2026-W25</div>
-      <div class="pub-date">June 15 to June 21, 2026 · Updated Jun 22, 2026</div>
+      <div class="pub-week">2026-W26</div>
+      <div class="pub-date">June 22 to June 28, 2026 · Updated Jun 22, 2026</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
@@ -725,11 +728,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 <div class="page-wrap">
 
   <div class="market-overview">
-    <div class="overview-kicker">Market Structure · 2026-W25</div>
-    <div class="overview-theme">Two weeks in and basically flat. One big winner I haven't booked is the only thing offsetting two oversized losers. The real lesson isn't stock picking, it's sizing. Fixing that now.</div>
-    <div class="overview-body"><p>Two weeks into running this thing live and the scoreboard is humbling, not because the picks were bad, but because I sized them backwards. The market itself did exactly what a healthy tape does: VIX collapsed from 21-plus midweek back to 17.7, small caps ripped (IWM +4%), and money rotated straight back into beta after the early-June wobble. Every short-vol trade on the screen printed money this week. The problem is I wasn't positioned for it. I had a big bear put on Clorox right as staples caught a bid (+2.85%), and that single oversized loser is most of the damage.</p>
-<p>Here's the honest read on my own book: on closed trades I'm down about 7.5% on the account. The only reason the whole thing is sitting near breakeven is CNC, my health-care bull call, up 68% on the spread and still open. So the lesson of these two weeks isn't "pick better." META and CNC prove the picking is fine. It's "size right." I bet the most money on my two worst ideas (CLX and MO) and the least on my best. Good selection plus backwards sizing equals a flat fortnight. That's a math problem, not a market problem, and it's the thing I'm fixing this week.</p>
-<p>The regime itself is still tech-led but breadth is finally widening, which is good for stock-picking. The last six months everything moved together and now dispersion is back. VIX in the 17 handle is too cheap to short index vol and rich enough on individual names to keep selling premium where the IV is mispriced. FOMC is Wednesday (June 17). I'm not betting on the decision (a hold is basically priced), but Powell's tone and the dot-plot can move the tape, so I'm carrying a mildly bearish net book into it: one long (CNC) against two defined-risk shorts (BX, SMCI). If the rally keeps grinding I lose a little on the shorts and CNC carries me; if FOMC cracks it, the bears pay. Either way I'm done being the guy whose biggest position is his worst idea.</p></div>
+    <div class="overview-kicker">Market Structure · 2026-W26</div>
+    <div class="overview-theme">Flat index, violent rotation underneath. Tech rips, defensives and energy bleed. I forced nothing and added two small rich-IV income shorts.</div>
+    <div class="overview-body"><p>SPY looks asleep at +0.4% on the week, but that hides a brawl. Tech and industrials ripped (XLK +4%, XLI +3.2%, QQQ +2.3%) while energy got torched (XLE -6%) and every defensive bled out (staples -4.2%, comms -4.3%, healthcare -2.4%). VIX is still napping at 17.3. This is a pure momentum tape: it pays you to own risk and punishes anything that looks safe.</p>
+<p>My directional screen came back empty this week and I left it empty. Nothing cleared the bar, so I forced nothing, which is the entire point of having a process. I added two small defined-risk income shorts where IV is rich and the names are stretched: a TGT 145/150 bear call and an MDT 85/87.5 bear call, single spreads, tiny size. BX and SMCI both hit their 21-day force-close this Friday, so they come off the book regardless. SMCI is the sore spot: the tech rip shoved it right up near my short strike. Last month's lesson still runs the book: keep size small, let the math work, never force a trade.</p></div>
   </div>
 
   <div class="about-panel">
@@ -753,12 +755,348 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">9</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">2</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">7</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val loss" id="unrealized-pnl-val" data-realized="-1.6464">-1.65%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val loss" id="spy-return-val">-0.83%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val loss" id="alpha-val" data-spybuild="-0.8260">-0.82%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">11</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">2</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">7</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val navy">2</div><div class="stat-lbl">Pending</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="0.7376">+0.74%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val loss" id="spy-return-val">-0.83%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="-0.8260">+1.56%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
   </section>
 
   <section>
     <div class="section-label">📈 Open Positions</div>
     <div class="picks-list">
+        <div class="pick-card short">
+          <div class="pick-header">
+            <div class="pick-title-group">
+              <div class="pick-ticker">TGT</div>
+              <div class="pick-sub">Consumer Discretionary · Medium</div>
+            </div>
+            <div class="pick-badges">
+              <span class="badge b-short">SHORT</span>
+              <span class="badge b-call">CALL</span>
+              <span class="badge b-spec">Speculative</span>
+            </div>
+          </div>
+          <div class="pick-body">
+            <div class="pick-metrics">
+              <div class="metric">
+                <label>Entry (Underlying)</label>
+                <div class="metric-val">$129.73</div>
+              </div>
+              <div class="metric">
+                <label>Current &amp; P&amp;L</label>
+                <div id="cp-wrap-a9dc2d76" class="metric-val flat">
+                  <span id="cp-a9dc2d76">$129.73</span>
+                  <span id="pnl-a9dc2d76" class="pnl-pill flat">n/a</span>
+                </div>
+              </div>
+              <div class="metric">
+                <label>Target</label>
+                <div class="metric-val gain">$145.00</div>
+              </div>
+              <div class="metric">
+                <label>Stop</label>
+                <div class="metric-val loss">$148.00</div>
+              </div>
+            </div>
+
+            <div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">$148.00 stop</span>
+                <span class="p-rr">R/R -0.8:1</span>
+                <span class="p-target">$145.00 target</span>
+              </div>
+              <div class="progress-track">
+                <div id="pfill-a9dc2d76" class="progress-fill flat" style="width:0.0%"></div>
+              </div>
+            </div>
+
+            
+    <div class="options-block">
+      <div class="options-title">CALL Option Details · Max Loss = Premium Paid</div>
+      <div class="options-row">
+        <div class="opt-item">
+          <label>Strike</label>
+          <div class="opt-val purple">$145.00</div>
+        </div>
+        <div class="opt-item">
+          <label>Expiry</label>
+          <div class="opt-val">2026-08-21</div>
+        </div>
+        <div class="opt-item">
+          <label>Premium Paid</label>
+          <div class="opt-val purple">$-0.88/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Break-Even at Expiry</label>
+          <div class="opt-val">$145.88</div>
+        </div>
+      </div>
+      <div class="options-row" style="margin-bottom:12px">
+        <div class="opt-item">
+          <label>IV Used</label>
+          <div class="opt-val">2800.0%</div>
+        </div>
+        <div class="opt-item">
+          <label>Leverage</label>
+          <div class="opt-val purple">1.5×</div>
+        </div>
+        <div class="opt-item">
+          <label>Max Loss</label>
+          <div class="opt-val loss">$-0.88/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Contract = 100 shares</label>
+          <div class="opt-val">×100</div>
+        </div>
+      </div>
+      <div class="greeks-row">
+        <div class="greek-cell">
+          <span class="greek-name">Delta</span>
+          <span class="greek-sym">Δ</span>
+          <div class="greek-val neg">-0.100</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Gamma</span>
+          <span class="greek-sym">Γ</span>
+          <div class="greek-val">-0.0200</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Theta / day</span>
+          <span class="greek-sym">Θ</span>
+          <div class="greek-val pos">0.020</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Vega / 1% IV</span>
+          <span class="greek-sym">ν</span>
+          <div class="greek-val pos">+-0.040</div>
+        </div>
+      </div>
+    </div>
+
+            <div class="pick-sizing-row">
+              <span><strong>Position size:</strong> <span class="size-pill">8.2% of account</span></span>
+              <span><strong>Days held:</strong> -1d</span>
+              <span><strong>Instrument:</strong> Call</span>
+              
+            </div>
+
+            <div class="pick-thesis">Target keeps drifting and consumer/retail is one of the weakest pockets on the tape (discretionary and staples both red this week). Selling the 145 call far above spot ($130) collects rich premium with an 80% probability of expiring worthless. Pure defined-risk income, not a conviction directional bet.</div>
+            <div class="pick-catalyst">No catalyst to push TGT up 12% by August. High IV rank means I get paid well to sell upside that is unlikely to print.</div>
+
+            
+    <div class="entry-timing">
+      <div class="entry-timing-title">📅 When to Buy · Entry Timing &amp; Disclaimer</div>
+      <div class="entry-timing-body">BEAR CALL CREDIT SPREAD: SELL 145C / BUY 150C exp 2026-08-21 (60 DTE). Net credit $0.88 x 1 spread = $88 collected. Max risk $412 if TGT >= $150 at expiry. Close at $0.44 buyback (50% of max profit). Stop if TGT breaks above $145. Force-close July 31 (21 DTE).</div>
+    </div>
+
+            
+    <div class="pick-chart">
+      <div class="chart-label">30-Day Price · TGT</div>
+      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
+  <defs>
+    <linearGradient id="fill-TGT" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- fill under curve -->
+  <polygon points="14.0,108 14.0,86.0 32.3,106.2 50.7,96.3 69.0,93.8 87.4,89.0 105.7,93.6 124.1,88.0 142.4,76.5 160.8,91.2 179.1,79.8 197.4,81.4 215.8,81.9 234.1,73.2 252.5,72.3 270.8,77.0 289.2,87.1 307.5,88.7 325.9,83.8 344.2,86.7 362.6,90.5 380.9,86.3 399.2,78.4 417.6,74.3 435.9,60.3 454.3,52.5 472.6,58.7 491.0,58.0 509.3,74.8 527.7,66.0 546.0,69.0 546.0,108" fill="url(#fill-TGT)"/>
+  <!-- Target line -->
+  <line x1="14" y1="23.2" x2="546" y2="23.2"
+        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="23.2" dy="4" font-size="9" fill="#15803d"
+        font-family="monospace" font-weight="700">$145</text>
+  <!-- Entry line -->
+  <line x1="14" y1="69.0" x2="546" y2="69.0"
+        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <text x="548" y="69.0" dy="4" font-size="9" fill="#1d4ed8"
+        font-family="monospace">$130</text>
+  <!-- Stop line -->
+  <line x1="14" y1="14.2" x2="546" y2="14.2"
+        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="14.2" dy="4" font-size="9" fill="#b91c1c"
+        font-family="monospace">$148</text>
+  <!-- Price line -->
+  <polyline points="14.0,86.0 32.3,106.2 50.7,96.3 69.0,93.8 87.4,89.0 105.7,93.6 124.1,88.0 142.4,76.5 160.8,91.2 179.1,79.8 197.4,81.4 215.8,81.9 234.1,73.2 252.5,72.3 270.8,77.0 289.2,87.1 307.5,88.7 325.9,83.8 344.2,86.7 362.6,90.5 380.9,86.3 399.2,78.4 417.6,74.3 435.9,60.3 454.3,52.5 472.6,58.7 491.0,58.0 509.3,74.8 527.7,66.0 546.0,69.0" fill="none" stroke="#0d1f35"
+            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Last price dot -->
+  <circle cx="546.0" cy="69.0" r="3.5" fill="#0d1f35"/>
+</svg></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $145</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $130</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $148</span>
+      </div>
+    </div>
+          </div>
+        </div>
+        
+        <div class="pick-card short">
+          <div class="pick-header">
+            <div class="pick-title-group">
+              <div class="pick-ticker">MDT</div>
+              <div class="pick-sub">Health Care · Medium</div>
+            </div>
+            <div class="pick-badges">
+              <span class="badge b-short">SHORT</span>
+              <span class="badge b-call">CALL</span>
+              <span class="badge b-spec">Speculative</span>
+            </div>
+          </div>
+          <div class="pick-body">
+            <div class="pick-metrics">
+              <div class="metric">
+                <label>Entry (Underlying)</label>
+                <div class="metric-val">$79.27</div>
+              </div>
+              <div class="metric">
+                <label>Current &amp; P&amp;L</label>
+                <div id="cp-wrap-eeb73cb0" class="metric-val flat">
+                  <span id="cp-eeb73cb0">$79.27</span>
+                  <span id="pnl-eeb73cb0" class="pnl-pill flat">n/a</span>
+                </div>
+              </div>
+              <div class="metric">
+                <label>Target</label>
+                <div class="metric-val gain">$85.00</div>
+              </div>
+              <div class="metric">
+                <label>Stop</label>
+                <div class="metric-val loss">$87.00</div>
+              </div>
+            </div>
+
+            <div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">$87.00 stop</span>
+                <span class="p-rr">R/R -0.7:1</span>
+                <span class="p-target">$85.00 target</span>
+              </div>
+              <div class="progress-track">
+                <div id="pfill-eeb73cb0" class="progress-fill flat" style="width:0.0%"></div>
+              </div>
+            </div>
+
+            
+    <div class="options-block">
+      <div class="options-title">CALL Option Details · Max Loss = Premium Paid</div>
+      <div class="options-row">
+        <div class="opt-item">
+          <label>Strike</label>
+          <div class="opt-val purple">$85.00</div>
+        </div>
+        <div class="opt-item">
+          <label>Expiry</label>
+          <div class="opt-val">2026-08-21</div>
+        </div>
+        <div class="opt-item">
+          <label>Premium Paid</label>
+          <div class="opt-val purple">$-0.47/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Break-Even at Expiry</label>
+          <div class="opt-val">$85.47</div>
+        </div>
+      </div>
+      <div class="options-row" style="margin-bottom:12px">
+        <div class="opt-item">
+          <label>IV Used</label>
+          <div class="opt-val">2600.0%</div>
+        </div>
+        <div class="opt-item">
+          <label>Leverage</label>
+          <div class="opt-val purple">1.5×</div>
+        </div>
+        <div class="opt-item">
+          <label>Max Loss</label>
+          <div class="opt-val loss">$-0.47/share</div>
+        </div>
+        <div class="opt-item">
+          <label>Contract = 100 shares</label>
+          <div class="opt-val">×100</div>
+        </div>
+      </div>
+      <div class="greeks-row">
+        <div class="greek-cell">
+          <span class="greek-name">Delta</span>
+          <span class="greek-sym">Δ</span>
+          <div class="greek-val neg">-0.140</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Gamma</span>
+          <span class="greek-sym">Γ</span>
+          <div class="greek-val">-0.0300</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Theta / day</span>
+          <span class="greek-sym">Θ</span>
+          <div class="greek-val pos">0.020</div>
+        </div>
+        <div class="greek-cell">
+          <span class="greek-name">Vega / 1% IV</span>
+          <span class="greek-sym">ν</span>
+          <div class="greek-val pos">+-0.040</div>
+        </div>
+      </div>
+    </div>
+
+            <div class="pick-sizing-row">
+              <span><strong>Position size:</strong> <span class="size-pill">4.1% of account</span></span>
+              <span><strong>Days held:</strong> -1d</span>
+              <span><strong>Instrument:</strong> Call</span>
+              
+            </div>
+
+            <div class="pick-thesis">Healthcare was the weakest defensive this week (XLV -2.4%) and Medtronic has no momentum. Selling the 85 call 7% above spot ($79) for an 80% POP income trade. Tiny size, defined risk, just harvesting rich premium.</div>
+            <div class="pick-catalyst">No near-term catalyst to lift MDT through $85. Elevated IV lets me sell upside cheaply and pocket the decay.</div>
+
+            
+    <div class="entry-timing">
+      <div class="entry-timing-title">📅 When to Buy · Entry Timing &amp; Disclaimer</div>
+      <div class="entry-timing-body">BEAR CALL CREDIT SPREAD: SELL 85C / BUY 87.5C exp 2026-08-21 (60 DTE). Net credit $0.47 x 1 spread = $47 collected. Max risk $203 if MDT >= $87.5 at expiry. Close at $0.24 buyback (50% of max profit). Stop if MDT breaks above $85. Force-close July 31 (21 DTE).</div>
+    </div>
+
+            
+    <div class="pick-chart">
+      <div class="chart-label">30-Day Price · MDT</div>
+      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
+  <defs>
+    <linearGradient id="fill-MDT" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- fill under curve -->
+  <polygon points="14.0,108 14.0,89.1 32.3,100.1 50.7,84.5 69.0,88.7 87.4,83.5 105.7,89.1 124.1,81.1 142.4,72.5 160.8,75.4 179.1,75.4 197.4,72.4 215.8,79.2 234.1,90.2 252.5,93.0 270.8,105.1 289.2,103.9 307.5,105.5 325.9,76.8 344.2,49.6 362.6,51.4 380.9,58.1 399.2,49.3 417.6,61.1 435.9,60.5 454.3,61.4 472.6,60.2 491.0,53.8 509.3,75.5 527.7,67.3 546.0,67.8 546.0,108" fill="url(#fill-MDT)"/>
+  <!-- Target line -->
+  <line x1="14" y1="28.6" x2="546" y2="28.6"
+        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="28.6" dy="4" font-size="9" fill="#15803d"
+        font-family="monospace" font-weight="700">$85</text>
+  <!-- Entry line -->
+  <line x1="14" y1="67.8" x2="546" y2="67.8"
+        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  <text x="548" y="67.8" dy="4" font-size="9" fill="#1d4ed8"
+        font-family="monospace">$79</text>
+  <!-- Stop line -->
+  <line x1="14" y1="15.0" x2="546" y2="15.0"
+        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="548" y="15.0" dy="4" font-size="9" fill="#b91c1c"
+        font-family="monospace">$87</text>
+  <!-- Price line -->
+  <polyline points="14.0,89.1 32.3,100.1 50.7,84.5 69.0,88.7 87.4,83.5 105.7,89.1 124.1,81.1 142.4,72.5 160.8,75.4 179.1,75.4 197.4,72.4 215.8,79.2 234.1,90.2 252.5,93.0 270.8,105.1 289.2,103.9 307.5,105.5 325.9,76.8 344.2,49.6 362.6,51.4 380.9,58.1 399.2,49.3 417.6,61.1 435.9,60.5 454.3,61.4 472.6,60.2 491.0,53.8 509.3,75.5 527.7,67.3 546.0,67.8" fill="none" stroke="#0d1f35"
+            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Last price dot -->
+  <circle cx="546.0" cy="67.8" r="3.5" fill="#0d1f35"/>
+</svg></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $85</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $79</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $87</span>
+      </div>
+    </div>
+          </div>
+        </div>
+        
         <div class="pick-card short">
           <div class="pick-header">
             <div class="pick-title-group">
@@ -1091,7 +1429,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">🌐 Cross-Asset Scoreboard</div>
-    <div class="table-wrap"><table><thead><tr><th>Instrument</th><th class="r">Close</th><th class="r">1W Chg</th><th class="r">YTD Chg</th></tr></thead><tbody><tr><td class="sh" colspan="4">Equities</td></tr><tr><td class="nm">SPY</td><td class="r">741.75</td><td class="r up">+0.57%</td><td class="r up">+10.2%</td></tr><tr><td class="nm">QQQ</td><td class="r">721.34</td><td class="r up">+2.31%</td><td class="r up">+15.5%</td></tr><tr><td class="nm">IWM</td><td class="r">292.95</td><td class="r up">+4.01%</td><td class="r up">+18.0%</td></tr><tr><td class="sh" colspan="4">Sector ETFs</td></tr><tr><td class="nm">XLK (Tech)</td><td class="r">184.80</td><td class="r up">+2.50%</td><td class="r up">+24.9%</td></tr><tr><td class="nm">XLF (Financials)</td><td class="r">53.34</td><td class="r up">+1.99%</td><td class="r down">-2.2%</td></tr><tr><td class="nm">XLV (Health Care)</td><td class="r">153.81</td><td class="r up">+0.52%</td><td class="r up">+1.7%</td></tr><tr><td class="nm">XLE (Energy)</td><td class="r">57.55</td><td class="r down">-0.21%</td><td class="r up">+29.5%</td></tr><tr><td class="nm">XLI (Industrials)</td><td class="r">176.18</td><td class="r up">+1.15%</td><td class="r up">+9.7%</td></tr><tr><td class="nm">XLY (Disc.)</td><td class="r">116.60</td><td class="r up">+1.51%</td><td class="r down">-2.2%</td></tr><tr><td class="nm">XLP (Staples)</td><td class="r">85.82</td><td class="r up">+2.85%</td><td class="r up">+11.1%</td></tr><tr><td class="nm">XLC (Comm.)</td><td class="r">111.65</td><td class="r down">-0.02%</td><td class="r up">+9.6%</td></tr><tr><td class="nm">XLB (Materials)</td><td class="r">52.18</td><td class="r up">+3.06%</td><td class="r up">+2.9%</td></tr><tr><td class="nm">XLRE (RE)</td><td class="r">45.36</td><td class="r up">+1.48%</td><td class="r down">-0.7%</td></tr><tr><td class="nm">XLU (Utilities)</td><td class="r">44.53</td><td class="r up">+0.41%</td><td class="r up">+5.4%</td></tr><tr><td class="sh" colspan="4">Vol & Credit</td></tr><tr><td class="nm">^VIX</td><td class="r">17.68</td><td class="r down">-17.81%</td><td class="r down">-3.9%</td></tr><tr><td class="nm">TLT</td><td class="r">85.77</td><td class="r up">+0.83%</td><td class="r down">-1.2%</td></tr><tr><td class="nm">HYG</td><td class="r">79.94</td><td class="r up">+0.64%</td><td class="r up">+1.2%</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>Instrument</th><th class="r">Close</th><th class="r">1W Chg</th><th class="r">YTD Chg</th></tr></thead><tbody><tr><td class="sh" colspan="4">Equities</td></tr><tr><td class="nm">SPY</td><td class="r">744.39</td><td class="r up">+0.36%</td><td class="r up">+9.0%</td></tr><tr><td class="nm">QQQ</td><td class="r">737.95</td><td class="r up">+2.30%</td><td class="r up">+20.4%</td></tr><tr><td class="nm">IWM</td><td class="r">298.18</td><td class="r up">+1.79%</td><td class="r up">+19.9%</td></tr><tr><td class="sh" colspan="4">Sector ETFs</td></tr><tr><td class="nm">XLK (Tech)</td><td class="r">192.15</td><td class="r up">+3.98%</td><td class="r up">+33.2%</td></tr><tr><td class="nm">XLF (Financials)</td><td class="r">53.70</td><td class="r up">+0.67%</td><td class="r down">-2.2%</td></tr><tr><td class="nm">XLV (Health Care)</td><td class="r">150.06</td><td class="r down">-2.44%</td><td class="r down">-3.5%</td></tr><tr><td class="nm">XLE (Energy)</td><td class="r">54.06</td><td class="r down">-6.06%</td><td class="r up">+18.4%</td></tr><tr><td class="nm">XLI (Industrials)</td><td class="r">181.80</td><td class="r up">+3.19%</td><td class="r up">+15.1%</td></tr><tr><td class="nm">XLY (Disc.)</td><td class="r">114.94</td><td class="r down">-1.42%</td><td class="r down">-2.9%</td></tr><tr><td class="nm">XLP (Staples)</td><td class="r">82.18</td><td class="r down">-4.24%</td><td class="r up">+5.8%</td></tr><tr><td class="nm">XLC (Comm.)</td><td class="r">106.86</td><td class="r down">-4.29%</td><td class="r down">-8.6%</td></tr><tr><td class="nm">XLB (Materials)</td><td class="r">51.62</td><td class="r down">-1.07%</td><td class="r up">+11.9%</td></tr><tr><td class="nm">XLRE (RE)</td><td class="r">44.02</td><td class="r down">-2.95%</td><td class="r up">+9.0%</td></tr><tr><td class="nm">XLU (Utilities)</td><td class="r">44.72</td><td class="r up">+0.43%</td><td class="r up">+3.6%</td></tr><tr><td class="sh" colspan="4">Vol & Credit</td></tr><tr><td class="nm">^VIX</td><td class="r">17.28</td><td class="r down">-2.26%</td><td class="r up">+19.1%</td></tr><tr><td class="nm">TLT</td><td class="r">86.09</td><td class="r up">+0.37%</td><td class="r down">-1.1%</td></tr><tr><td class="nm">HYG</td><td class="r">79.94</td><td class="r up">+0.00%</td><td class="r down">-0.9%</td></tr></tbody></table></div>
   </section>
 
 </div>

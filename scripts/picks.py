@@ -415,15 +415,35 @@ def compute_track_record() -> dict:
                              "win_rate": wins / len(grp)}
 
     # ── Cumulative P/L: ACCOUNT-WEIGHTED realized P/L ───────────────────
-    # A raw sum of each pick's spread-return % is meaningless because the
-    # picks were sized very differently (e.g. CLX risked 6.3% of the
-    # account, META only 2%). We scale each pick's return by the % of the
-    # account it actually risked, so the sum is the real dollar impact on
-    # the account expressed as a % of account value.
+    # Each pick's return % is scaled to its real dollar impact on the
+    # account. The weight is the capital basis the return % is measured
+    # against, as a % of account:
+    #   debit spread / long option / equity → premium paid (= account_risk_pct)
+    #   credit spread → credit collected, NOT the max loss. account_risk_pct
+    #     stores max loss for credits, so convert:
+    #         credit_weight = risk% * credit / (width - credit)
+    #   (width = |short_strike - strike|). Mixing the two bases — multiplying
+    #   a "% of credit" return by a "max-loss" weight — wildly overstates
+    #   credit-spread P/L, so it must be corrected here.
     closed_picks["account_risk_pct"] = pd.to_numeric(
         closed_picks["account_risk_pct"], errors="coerce").fillna(0.0)
+
+    def _pnl_weight(row):
+        risk = float(row["account_risk_pct"] or 0.0)
+        kind = str(row.get("spread_kind", "") or "")
+        if kind in ("bear_call", "bull_put"):           # credit spread
+            credit = abs(float(row.get("premium_paid") or 0) or 0)
+            try:
+                width = abs(float(row.get("short_strike") or 0) - float(row.get("strike") or 0))
+            except (TypeError, ValueError):
+                width = 0.0
+            if width > credit > 0:
+                return risk * credit / (width - credit)
+        return risk
+
     cumulative_pnl = float(
-        (closed_picks["realized_pnl_pct"] * closed_picks["account_risk_pct"] / 100.0).sum()
+        (closed_picks["realized_pnl_pct"]
+         * closed_picks.apply(_pnl_weight, axis=1) / 100.0).sum()
     )
 
     return {
