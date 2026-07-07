@@ -21,10 +21,7 @@ permissions:
 
 concurrency:
   group: pages
-  # false = let an in-flight deploy finish and queue the next one, instead of
-  # cancelling mid-deploy (which made overlapping runs report false failures).
-  # This matches GitHub's official Pages workflow recommendation.
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
