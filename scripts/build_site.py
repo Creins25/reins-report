@@ -474,7 +474,13 @@ SCRIPT_V5 = r'''(function () {
 
     if (hasBld) {
       var dS       = (liveSpot != null) ? (liveSpot - pick.build_spot) : 0;
-      var estPrem  = pick.build_premium + pick.delta * dS;
+      // build_premium is the spread's cost-to-close. Its sensitivity to the
+      // stock has the SAME sign as position delta for debit spreads, but the
+      // OPPOSITE sign for credit spreads (a bear call's cost-to-close RISES as
+      // the stock rises, even though the position delta is negative). Flip the
+      // delta for credit spreads so intraday P/L moves the correct direction.
+      var costDelta = pick.is_credit ? -pick.delta : pick.delta;
+      var estPrem  = pick.build_premium + costDelta * dS;
       if (estPrem < 0.01) estPrem = 0.01;          // floor at $0.01
       var premChg  = estPrem - pick.entry_premium;
       // CREDIT SPREADS: you collected premium at entry; you PAY to close.
