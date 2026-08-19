@@ -353,7 +353,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "3d2db165", "ticker": "CNC", "entry": 62.22, "direction": "long", "stop": 59.0, "target": 67.5, "instrument": "call", "entry_premium": 1.91, "premium": 1.91, "delta": 0.35, "gamma": 0.04, "build_premium": 2.61, "build_spot": 65.22, "pending": false, "account_risk_pct": 7.6, "strike": 62.5, "expiry": "2026-09-18", "is_credit": false, "short_strike": 67.5, "spread_kind": "bull_call", "pnl_weight": 7.6}, {"id": "4000e784", "ticker": "BLDR", "entry": 66.44, "direction": "short", "stop": 70.0, "target": 60.0, "instrument": "put", "entry_premium": 2.3, "premium": 2.3, "delta": -0.3, "gamma": 0.04, "build_premium": 1.625, "build_spot": 67.62, "pending": false, "account_risk_pct": 4.6, "strike": 65.0, "expiry": "2026-09-18", "is_credit": false, "short_strike": 60.0, "spread_kind": "bear_put", "pnl_weight": 4.6}];
+  var PICKS = [{"id": "3d2db165", "ticker": "CNC", "entry": 62.22, "direction": "long", "stop": 59.0, "target": 67.5, "instrument": "call", "entry_premium": 1.91, "premium": 1.91, "delta": 0.35, "gamma": 0.04, "build_premium": 2.37, "build_spot": 65.015, "pending": false, "account_risk_pct": 7.6, "strike": 62.5, "expiry": "2026-09-18", "is_credit": false, "short_strike": 67.5, "spread_kind": "bull_call", "pnl_weight": 7.6}, {"id": "4000e784", "ticker": "BLDR", "entry": 66.44, "direction": "short", "stop": 70.0, "target": 60.0, "instrument": "put", "entry_premium": 2.3, "premium": 2.3, "delta": -0.3, "gamma": 0.04, "build_premium": 1.075, "build_spot": 71.845, "pending": false, "account_risk_pct": 4.6, "strike": 65.0, "expiry": "2026-09-18", "is_credit": false, "short_strike": 60.0, "spread_kind": "bear_put", "pnl_weight": 4.6}];
   var SPY_BASE = 750.59;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -720,7 +720,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </div>
     <div class="masthead-right">
       <div class="pub-week">2026-W32</div>
-      <div class="pub-date">August 3 to August 9, 2026 · Updated Aug 18, 2026</div>
+      <div class="pub-date">August 3 to August 9, 2026 · Updated Aug 19, 2026</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
@@ -763,7 +763,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">15</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">2</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">13</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="2.7271">+2.73%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val gain" id="spy-return-val">+2.25%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="2.2462">+0.48%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">15</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">2</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">13</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="2.7271">+2.73%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val gain" id="spy-return-val">+2.53%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="2.5320">+0.20%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
   </section>
 
   <section>
@@ -880,7 +880,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
             <div class="pick-sizing-row">
               <span><strong>Position size:</strong> <span class="size-pill">7.6% of account</span></span>
-              <span><strong>Days held:</strong> 15d</span>
+              <span><strong>Days held:</strong> 16d</span>
               <span><strong>Instrument:</strong> Call</span>
               <span><strong>Entered:</strong> Aug 03, 2026</span>
             </div>
@@ -902,7 +902,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,30.3 32.3,25.6 50.7,27.9 69.0,19.2 87.4,15.2 105.7,34.7 124.1,59.9 142.4,36.3 160.8,41.9 179.1,25.7 197.4,41.4 215.8,61.3 234.1,64.4 252.5,58.2 270.8,59.8 289.2,79.1 307.5,88.2 325.9,75.4 344.2,61.2 362.6,58.3 380.9,31.2 399.2,57.1 417.6,42.5 435.9,35.1 454.3,50.8 472.6,30.5 491.0,40.0 509.3,26.8 527.7,55.1 546.0,47.6 546.0,108" fill="url(#fill-CNC)"/>
+  <polygon points="14.0,108 14.0,25.6 32.3,27.9 50.7,19.2 69.0,15.2 87.4,34.7 105.7,59.9 124.1,36.3 142.4,41.9 160.8,25.7 179.1,41.4 197.4,61.3 215.8,64.4 234.1,58.2 252.5,59.8 270.8,79.1 289.2,88.2 307.5,75.4 325.9,61.2 344.2,58.3 362.6,31.2 380.9,57.1 399.2,42.5 417.6,35.1 435.9,50.8 454.3,30.5 472.6,40.0 491.0,26.8 509.3,55.1 527.7,47.6 546.0,49.5 546.0,108" fill="url(#fill-CNC)"/>
   <!-- Target line -->
   <line x1="14" y1="26.5" x2="546" y2="26.5"
         stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
@@ -919,10 +919,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="105.3" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$59</text>
   <!-- Price line -->
-  <polyline points="14.0,30.3 32.3,25.6 50.7,27.9 69.0,19.2 87.4,15.2 105.7,34.7 124.1,59.9 142.4,36.3 160.8,41.9 179.1,25.7 197.4,41.4 215.8,61.3 234.1,64.4 252.5,58.2 270.8,59.8 289.2,79.1 307.5,88.2 325.9,75.4 344.2,61.2 362.6,58.3 380.9,31.2 399.2,57.1 417.6,42.5 435.9,35.1 454.3,50.8 472.6,30.5 491.0,40.0 509.3,26.8 527.7,55.1 546.0,47.6" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,25.6 32.3,27.9 50.7,19.2 69.0,15.2 87.4,34.7 105.7,59.9 124.1,36.3 142.4,41.9 160.8,25.7 179.1,41.4 197.4,61.3 215.8,64.4 234.1,58.2 252.5,59.8 270.8,79.1 289.2,88.2 307.5,75.4 325.9,61.2 344.2,58.3 362.6,31.2 380.9,57.1 399.2,42.5 417.6,35.1 435.9,50.8 454.3,30.5 472.6,40.0 491.0,26.8 509.3,55.1 527.7,47.6 546.0,49.5" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="47.6" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="49.5" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $68</span>
@@ -1044,7 +1044,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
             <div class="pick-sizing-row">
               <span><strong>Position size:</strong> <span class="size-pill">4.6% of account</span></span>
-              <span><strong>Days held:</strong> 15d</span>
+              <span><strong>Days held:</strong> 16d</span>
               <span><strong>Instrument:</strong> Put</span>
               <span><strong>Entered:</strong> Aug 03, 2026</span>
             </div>
@@ -1066,7 +1066,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,34.3 32.3,32.6 50.7,26.7 69.0,37.8 87.4,29.4 105.7,24.9 124.1,14.0 142.4,34.0 160.8,41.9 179.1,57.0 197.4,50.4 215.8,52.9 234.1,41.1 252.5,41.8 270.8,37.0 289.2,67.0 307.5,75.9 325.9,73.7 344.2,43.1 362.6,28.4 380.9,25.9 399.2,42.9 417.6,31.8 435.9,45.6 454.3,29.7 472.6,43.4 491.0,37.6 509.3,42.9 527.7,54.6 546.0,67.8 546.0,108" fill="url(#fill-BLDR)"/>
+  <polygon points="14.0,108 14.0,32.6 32.3,26.7 50.7,37.8 69.0,29.4 87.4,24.9 105.7,14.0 124.1,34.0 142.4,41.9 160.8,57.0 179.1,50.4 197.4,52.9 215.8,41.1 234.1,41.8 252.5,37.0 270.8,67.0 289.2,75.9 307.5,73.7 325.9,43.1 344.2,28.4 362.6,25.9 380.9,42.9 399.2,31.8 417.6,45.6 435.9,29.7 454.3,43.4 472.6,37.6 491.0,42.9 509.3,54.6 527.7,67.8 546.0,46.3 546.0,108" fill="url(#fill-BLDR)"/>
   <!-- Target line -->
   <line x1="14" y1="106.5" x2="546" y2="106.5"
         stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
@@ -1083,10 +1083,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="55.7" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$70</text>
   <!-- Price line -->
-  <polyline points="14.0,34.3 32.3,32.6 50.7,26.7 69.0,37.8 87.4,29.4 105.7,24.9 124.1,14.0 142.4,34.0 160.8,41.9 179.1,57.0 197.4,50.4 215.8,52.9 234.1,41.1 252.5,41.8 270.8,37.0 289.2,67.0 307.5,75.9 325.9,73.7 344.2,43.1 362.6,28.4 380.9,25.9 399.2,42.9 417.6,31.8 435.9,45.6 454.3,29.7 472.6,43.4 491.0,37.6 509.3,42.9 527.7,54.6 546.0,67.8" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,32.6 32.3,26.7 50.7,37.8 69.0,29.4 87.4,24.9 105.7,14.0 124.1,34.0 142.4,41.9 160.8,57.0 179.1,50.4 197.4,52.9 215.8,41.1 234.1,41.8 252.5,37.0 270.8,67.0 289.2,75.9 307.5,73.7 325.9,43.1 344.2,28.4 362.6,25.9 380.9,42.9 399.2,31.8 417.6,45.6 435.9,29.7 454.3,43.4 472.6,37.6 491.0,42.9 509.3,54.6 527.7,67.8 546.0,46.3" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="67.8" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="46.3" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $60</span>
