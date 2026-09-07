@@ -784,6 +784,24 @@ def _safe_f(v, decimals=3, fallback="n/a") -> str:
     except Exception:
         return fallback
 
+
+def _fmt_iv(v, fallback="n/a") -> str:
+    """Format implied vol, tolerating both storage conventions in the ledger.
+
+    W22 rows store IV as a decimal fraction (0.3173 = 31.73%); every row from
+    W23 onward stores it as a percent (54.0 = 54%). Anything at or below 3 is
+    a fraction, since no listed name in the universe trades at 300% IV.
+    """
+    try:
+        iv = float(v)
+    except Exception:
+        return fallback
+    if iv <= 0:
+        return fallback
+    if iv <= 3:
+        iv *= 100
+    return f"{iv:.1f}%"
+
 # ── Sparkline chart ────────────────────────────────────────────────────────────
 
 def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
@@ -1098,7 +1116,9 @@ def _build_options_block(row) -> str:
     gamma       = _safe_f(row.get('gamma',''), 4, 'n/a')
     theta       = _safe_f(row.get('theta_daily',''), 3, 'n/a')
     vega        = _safe_f(row.get('vega_1pct',''), 3, 'n/a')
-    iv_pct      = f"{float(row.get('iv_used',0))*100:.1f}%" if row.get('iv_used') not in ('',[],None) and str(row.get('iv_used','')) != '' else 'n/a'
+    # iv_used is stored as a decimal fraction (0.3173) in W22 rows and as a
+    # percent (54.0) from W23 onward. Normalise: <= 3 means it is a fraction.
+    iv_pct      = _fmt_iv(row.get('iv_used',''))
 
     try:
         theta_val = float(row.get('theta_daily',0))
