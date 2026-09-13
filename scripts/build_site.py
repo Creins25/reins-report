@@ -376,6 +376,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 # __PICKS_JSON__ is replaced at build time.
 SCRIPT_V5 = r'''(function () {
   var PICKS = __PICKS_JSON__;
+  var PRICE_ASOF = '__PRICE_ASOF__';
   var SPY_BASE = __SPY_BASE__;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -400,12 +401,22 @@ SCRIPT_V5 = r'''(function () {
   function raceProxies(url) {
     return new Promise(function (resolve, reject) {
       var done = false, errs = 0;
+      // Hard deadline. A proxy that neither resolves nor rejects would leave
+      // this promise pending forever, which stalls the whole price loop and
+      // strands the indicator on "Updating prices…".
+      var timer = setTimeout(function () { settle(reject, new Error('timeout')); }, 6000);
+      function settle(fn, arg) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        fn(arg);
+      }
       PROXIES.forEach(function (pfn) {
         via(pfn, url)
-          .then(function (d) { if (!done) { done = true; resolve(d); } })
+          .then(function (d) { settle(resolve, d); })
           .catch(function () {
             errs++;
-            if (errs === PROXIES.length && !done) { done = true; reject(new Error('all failed')); }
+            if (errs === PROXIES.length) settle(reject, new Error('all failed'));
           });
       });
     });
@@ -436,7 +447,8 @@ SCRIPT_V5 = r'''(function () {
       fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
       delayed:  '<span style="color:#fbbf24;font-weight:700">⚠️ DELAYED · feed unavailable</span>',
       closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
-      eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
+      eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>',
+      stale:    '<span style="color:rgba(255,255,255,.5)">📊 Last Close</span>'
     };
     el.innerHTML = map[state] || map.closed;
   }
@@ -666,8 +678,16 @@ SCRIPT_V5 = r'''(function () {
           lastOk = Date.now();
           updateUnrealizedPnl();
           stampTime(eod);
-        } else if (!eod && lastOk && (Date.now() - lastOk > 120000)) {
-          // No successful fetch in 2+ min while market is open: never imply LIVE
+        } else if (eod) {
+          // Market closed and the live feed is unreachable (the public CORS
+          // proxies 403 regularly). The cards already show the build-time
+          // closing prices, so label them for what they are instead of
+          // leaving the indicator spinning on "Updating prices…" forever.
+          var ts = document.getElementById('live-ts');
+          if (ts) ts.textContent = PRICE_ASOF ? 'Close ' + PRICE_ASOF : 'Close';
+          setIndicator('stale');
+        } else {
+          // Market open but nothing came back: never imply LIVE.
           setIndicator('delayed');
         }
         return;
@@ -1361,6 +1381,72 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
     return html
 
 
+def _build_closed_html(df) -> str:
+    """Table of every closed pick: the honest record behind the Track Record stat.
+
+    Account impact uses the same pnl_weight basis as the Cumulative P/L stat,
+    so the column sums to the realized number shown above it. For credit
+    spreads the return is measured against the credit collected, not the
+    max loss, which is why their weight is smaller than the position size.
+    """
+    if df is None or df.empty:
+        return "<p style='color:var(--text-muted)'>No closed positions yet.</p>"
+
+    rows = df.to_dict("records")
+    rows.sort(key=lambda r: str(r.get("date_closed") or ""), reverse=True)
+
+    html = ('<div class="table-wrap"><table>'
+            '<thead><tr><th>Ticker</th><th>Week</th><th>Structure</th>'
+            '<th class="r">Return</th><th class="r">Account</th>'
+            '<th>Outcome</th></tr></thead><tbody>')
+    total = 0.0
+    for r in rows:
+        try:    ret = float(r.get("realized_pnl_pct") or 0)
+        except Exception: ret = 0.0
+        try:    risk = float(r.get("account_risk_pct") or 0)
+        except Exception: risk = 0.0
+        try:    prem = float(r.get("premium_paid") or 0)
+        except Exception: prem = 0.0
+        wt = risk
+        if prem < 0:
+            try:
+                credit = abs(prem)
+                width  = abs(float(r.get("short_strike")) - float(r.get("strike")))
+                if width > credit > 0:
+                    wt = risk * credit / (width - credit)
+            except Exception:
+                pass
+        acct = ret * wt / 100.0
+        total += acct
+
+        cls  = "gain" if ret > 0 else ("loss" if ret < 0 else "")
+        # pandas turns blank CSV cells into NaN, which is truthy, so an
+        # "or" chain would print "nan" for the pre-spread rows.
+        def _first(*vals):
+            for v in vals:
+                sv = str(v).strip()
+                if sv and sv.lower() != "nan":
+                    return sv
+            return "equity"
+        kind = _first(r.get("spread_kind"), r.get("instrument_type")).replace("_", " ")
+        if kind in ("call", "put"):
+            kind = "long " + kind
+        status = str(r.get("status") or "")
+        outcome = ("Target hit"  if "target" in status else
+                   "Stopped out" if "stop"   in status else "Closed")
+        html += (f'<tr><td class="nm">{r.get("ticker","")}</td>'
+                 f'<td>{str(r.get("week_added","")).replace("2026-","")}</td>'
+                 f'<td>{kind}</td>'
+                 f'<td class="r {cls}">{ret:+.1f}%</td>'
+                 f'<td class="r {cls}">{acct:+.2f}%</td>'
+                 f'<td>{outcome}</td></tr>')
+    tcls = "gain" if total > 0 else ("loss" if total < 0 else "")
+    html += (f'<tr><td class="sh" colspan="4">Realized total</td>'
+             f'<td class="r sh {tcls}">{total:+.2f}%</td><td class="sh"></td></tr>')
+    html += '</tbody></table></div>'
+    return html
+
+
 def _build_scoreboard_html(rows: list[dict]) -> str:
     if not rows:
         return "<p style='color:var(--text-muted)'>No scoreboard data.</p>"
@@ -1500,6 +1586,13 @@ def build_site(week_str: str | None = None) -> Path:
         open_picks = get_open_picks()
     except Exception:
         open_picks = pd.DataFrame()
+
+    # Every non-open row in the ledger, for the Closed Positions table.
+    try:
+        _all = pd.read_csv(_PROJECT_ROOT / "data" / "picks_ledger.csv")
+        closed_picks = _all[~_all["status"].astype(str).str.startswith("open")].copy()
+    except Exception:
+        closed_picks = pd.DataFrame()
 
     try:
         stats = compute_track_record()
@@ -1697,7 +1790,14 @@ def build_site(week_str: str | None = None) -> Path:
             except Exception:
                 pass
     picks_json  = json.dumps(_picks_js_list)
-    script_html = SCRIPT_V5.replace('__PICKS_JSON__', picks_json)
+    try:
+        import yfinance as _yf
+        _bar = _yf.Ticker('SPY').history(period='5d').index[-1]
+        _asof = _bar.strftime('%b %d, %Y')
+    except Exception:
+        _asof = datetime.now().strftime('%b %d, %Y')
+    script_html = (SCRIPT_V5.replace('__PICKS_JSON__', picks_json)
+                            .replace('__PRICE_ASOF__', _asof))
     script_html = script_html.replace('__SPY_BASE__', json.dumps(stats.get("spy_base_price") or 0))
 
     # Prose — fall back to auto-generated narrative if not written yet
@@ -1732,6 +1832,7 @@ def build_site(week_str: str | None = None) -> Path:
     ticker_html     = _build_ticker_html(scoreboard_rows)
     stats_html      = _build_stats_html(stats)
     picks_html      = _build_picks_html(open_picks)
+    closed_html     = _build_closed_html(closed_picks)
     scoreboard_html = _build_scoreboard_html(scoreboard_rows)
 
     auto_note = (
@@ -1824,6 +1925,11 @@ def build_site(week_str: str | None = None) -> Path:
   <section>
     <div class="section-label">📈 Open Positions</div>
     {picks_html}
+  </section>
+
+  <section>
+    <div class="section-label">🗂 Closed Positions</div>
+    {closed_html}
   </section>
 
   <section>

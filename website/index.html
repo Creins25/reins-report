@@ -354,6 +354,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <script>
   (function () {
   var PICKS = [{"id": "bb26b3b0", "ticker": "ZTS", "entry": 77.73, "direction": "short", "stop": 82.0, "target": 70.0, "instrument": "put", "entry_premium": 4.12, "premium": 4.12, "delta": -0.4, "gamma": 0.03, "build_premium": 6.175, "build_spot": 72.97, "pending": false, "account_risk_pct": 8.2, "strike": 80.0, "expiry": "2026-10-16", "is_credit": false, "short_strike": 70.0, "spread_kind": "bear_put", "pnl_weight": 8.2}, {"id": "847274b9", "ticker": "NCLH", "entry": 15.57, "direction": "short", "stop": 17.0, "target": 14.0, "instrument": "put", "entry_premium": 0.83, "premium": 0.83, "delta": -0.35, "gamma": 0.05, "build_premium": 1.06, "build_spot": 14.82, "pending": false, "account_risk_pct": 19.9, "strike": 16.0, "expiry": "2026-10-16", "is_credit": false, "short_strike": 14.0, "spread_kind": "bear_put", "pnl_weight": 19.9}, {"id": "57905aba", "ticker": "PLTR", "entry": 167.23, "direction": "short", "stop": 188.0, "target": 185.0, "instrument": "call", "entry_premium": 0.96, "premium": 0.96, "delta": -0.15, "gamma": -0.02, "build_premium": 0.965, "build_spot": 167.23, "pending": false, "account_risk_pct": 8.1, "strike": 185.0, "expiry": "2026-10-16", "is_credit": true, "short_strike": 190.0, "spread_kind": "bear_call", "pnl_weight": 1.9248}, {"id": "d65e171a", "ticker": "NRG", "entry": 113.46, "direction": "short", "stop": 128.0, "target": 125.0, "instrument": "call", "entry_premium": 0.86, "premium": 0.86, "delta": -0.14, "gamma": -0.02, "build_premium": 0.85, "build_spot": 113.46, "pending": false, "account_risk_pct": 8.3, "strike": 125.0, "expiry": "2026-10-16", "is_credit": true, "short_strike": 130.0, "spread_kind": "bear_call", "pnl_weight": 1.7242}];
+  var PRICE_ASOF = 'Sep 11, 2026';
   var SPY_BASE = 750.59;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -378,12 +379,22 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   function raceProxies(url) {
     return new Promise(function (resolve, reject) {
       var done = false, errs = 0;
+      // Hard deadline. A proxy that neither resolves nor rejects would leave
+      // this promise pending forever, which stalls the whole price loop and
+      // strands the indicator on "Updating prices…".
+      var timer = setTimeout(function () { settle(reject, new Error('timeout')); }, 6000);
+      function settle(fn, arg) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        fn(arg);
+      }
       PROXIES.forEach(function (pfn) {
         via(pfn, url)
-          .then(function (d) { if (!done) { done = true; resolve(d); } })
+          .then(function (d) { settle(resolve, d); })
           .catch(function () {
             errs++;
-            if (errs === PROXIES.length && !done) { done = true; reject(new Error('all failed')); }
+            if (errs === PROXIES.length) settle(reject, new Error('all failed'));
           });
       });
     });
@@ -414,7 +425,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
       delayed:  '<span style="color:#fbbf24;font-weight:700">⚠️ DELAYED · feed unavailable</span>',
       closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
-      eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>'
+      eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>',
+      stale:    '<span style="color:rgba(255,255,255,.5)">📊 Last Close</span>'
     };
     el.innerHTML = map[state] || map.closed;
   }
@@ -644,8 +656,16 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
           lastOk = Date.now();
           updateUnrealizedPnl();
           stampTime(eod);
-        } else if (!eod && lastOk && (Date.now() - lastOk > 120000)) {
-          // No successful fetch in 2+ min while market is open: never imply LIVE
+        } else if (eod) {
+          // Market closed and the live feed is unreachable (the public CORS
+          // proxies 403 regularly). The cards already show the build-time
+          // closing prices, so label them for what they are instead of
+          // leaving the indicator spinning on "Updating prices…" forever.
+          var ts = document.getElementById('live-ts');
+          if (ts) ts.textContent = PRICE_ASOF ? 'Close ' + PRICE_ASOF : 'Close';
+          setIndicator('stale');
+        } else {
+          // Market open but nothing came back: never imply LIVE.
           setIndicator('delayed');
         }
         return;
@@ -735,11 +755,11 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <div class="market-overview">
     <div class="overview-kicker">Market Structure · 2026-W38</div>
-    <div class="overview-theme">Broad risk-off with energy the only real bid. Two stops hit, the model produced no directional picks at all, and the insider factor came back online after three months dead. Sold premium on PLTR and NRG instead.</div>
-    <div class="overview-body"><p>Risk came off almost everywhere. SPY fell 0.77%, small caps took the worst of it at -2.4%, and the VIX jumped 9%. Health care was the ugliest sector at -3.6%, materials -2.8%. Energy was the only real bid, up 1.7% and now up 42.7% on the year. TLT fell another 1.6% as long yields kept climbing.</p>
+    <div class="overview-theme">Broad risk-off with energy leading again. Two stops hit, the model produced no directional picks at all, and the insider factor came back online after three months dead. Sold premium on PLTR and NRG instead.</div>
+    <div class="overview-body"><p>Risk came off almost everywhere. SPY fell 0.77%, small caps took the worst of it at -2.4%, and the VIX jumped 9%. Health care was the ugliest sector at -3.6%, materials -2.8%. Energy led at +1.7% and is now up 42.7% on the year. Only tech and communications were also green, both by less than a point. TLT fell another 1.6% as long yields kept climbing.</p>
 <p>Both of my longs stopped out. FCX broke below the 75 strike and closed at -50%. TGT fell 5.2% in a week and hit its stop too. That was the trade I flagged last Sunday for having a 36% probability of profit, and the warning played out exactly. Together they cost 8.6% of the account. The two shorts paid for most of it: ZTS is up 50% and NCLH up 28%, so the book is roughly flat in dollars on the week.</p>
-<p>The model produced no directional picks at all. Ninety-six longs and eighty-five shorts cleared the score filter and then every one of them failed the two-factor alignment test. That is the system working, not breaking.</p>
-<p>The insider factor is finally alive. Form 4 data had not been pulled since May 30, so the factor scored a flat 50 for three months. A full EDGAR run loaded 6,403 buy and sell transactions and flagged 8 cluster buys. It caught something immediately: nearly every top long showed insider selling, including TGT at seven out of ten confidence.</p>
+<p>The model produced no directional picks at all. Ninety-six longs and eighty-five shorts cleared the score filter, seventy and fifty-seven survived factor alignment, and then every one of them failed the last gate of two factors at 72 or better. That is the system working, not breaking.</p>
+<p>The insider factor is finally alive. Form 4 data had not been pulled since May 30, so the factor scored a flat 50 for three months. A full EDGAR run loaded 6,403 buy and sell transactions inside the 90-day window and flagged 8 cluster buys. It caught something immediately: nearly every top long showed insider selling, including TGT at seven out of ten confidence.</p>
 <p>With no directional signal I sold premium instead. PLTR made its 2026 high on August 31 and has given back 10.3%, so I sold the 185 call right at the level that failed. NRG is a separate bet, not a second AI trade, and I checked that: the two are negatively correlated at -0.41. Skipped ABNB and the WMT condor because both had strikes under 6% out of the money.</p></div>
   </div>
 
@@ -1428,6 +1448,11 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
           </div>
         </div>
         </div>
+  </section>
+
+  <section>
+    <div class="section-label">🗂 Closed Positions</div>
+    <div class="table-wrap"><table><thead><tr><th>Ticker</th><th>Week</th><th>Structure</th><th class="r">Return</th><th class="r">Account</th><th>Outcome</th></tr></thead><tbody><tr><td class="nm">FCX</td><td>W35</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-3.80%</td><td>Stopped out</td></tr><tr><td class="nm">TGT</td><td>W37</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-4.75%</td><td>Stopped out</td></tr><tr><td class="nm">CNC</td><td>W32</td><td>bull call</td><td class="r gain">+15.2%</td><td class="r gain">+1.15%</td><td>Closed</td></tr><tr><td class="nm">BLDR</td><td>W32</td><td>bear put</td><td class="r loss">-50.0%</td><td class="r loss">-2.30%</td><td>Stopped out</td></tr><tr><td class="nm">COIN</td><td>W27</td><td>bear put</td><td class="r gain">+0.4%</td><td class="r gain">+0.06%</td><td>Closed</td></tr><tr><td class="nm">CSCO</td><td>W27</td><td>bear call</td><td class="r gain">+12.0%</td><td class="r gain">+0.20%</td><td>Target hit</td></tr><tr><td class="nm">HPE</td><td>W27</td><td>bear call</td><td class="r loss">-37.6%</td><td class="r loss">-0.76%</td><td>Closed</td></tr><tr><td class="nm">SMCI</td><td>W30</td><td>long put</td><td class="r loss">-65.6%</td><td class="r loss">-3.81%</td><td>Closed</td></tr><tr><td class="nm">BX</td><td>W25</td><td>bear put</td><td class="r gain">+55.9%</td><td class="r gain">+5.92%</td><td>Target hit</td></tr><tr><td class="nm">SMCI</td><td>W25</td><td>bear call</td><td class="r gain">+39.6%</td><td class="r gain">+0.38%</td><td>Target hit</td></tr><tr><td class="nm">CLX</td><td>W23</td><td>bear put</td><td class="r loss">-71.4%</td><td class="r loss">-4.50%</td><td>Stopped out</td></tr><tr><td class="nm">MO</td><td>W23</td><td>bear call</td><td class="r loss">-38.3%</td><td class="r loss">-0.72%</td><td>Closed</td></tr><tr><td class="nm">CNC</td><td>W23</td><td>bull call</td><td class="r gain">+50.3%</td><td class="r gain">+5.83%</td><td>Target hit</td></tr><tr><td class="nm">AMZN</td><td>W22</td><td>long call</td><td class="r gain">+3.6%</td><td class="r gain">+0.05%</td><td>Target hit</td></tr><tr><td class="nm">JPM</td><td>W22</td><td>equity</td><td class="r loss">-2.3%</td><td class="r loss">-0.03%</td><td>Closed</td></tr><tr><td class="nm">NVDA</td><td>W22</td><td>long call</td><td class="r loss">-44.3%</td><td class="r loss">-0.89%</td><td>Stopped out</td></tr><tr><td class="nm">META</td><td>W22</td><td>long call</td><td class="r gain">+49.6%</td><td class="r gain">+0.99%</td><td>Target hit</td></tr><tr><td class="sh" colspan="4">Realized total</td><td class="r sh loss">-6.97%</td><td class="sh"></td></tr></tbody></table></div>
   </section>
 
   <section>
