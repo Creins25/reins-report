@@ -1120,6 +1120,31 @@ def _build_options_block(row) -> str:
     # percent (54.0) from W23 onward. Normalise: <= 3 means it is a fraction.
     iv_pct      = _fmt_iv(row.get('iv_used',''))
 
+    # Credit spreads store premium_paid as a negative number. You collect that
+    # premium rather than paying it, and the max loss is the distance between
+    # the strikes less the credit, not the premium itself.
+    try:
+        prem_val = float(row.get('premium_paid', 0) or 0)
+    except Exception:
+        prem_val = 0.0
+    is_credit = prem_val < 0
+    if is_credit:
+        prem_label = 'Credit Collected'
+        premium    = f"${abs(prem_val):.2f}"
+        try:
+            width    = abs(float(row.get('short_strike','')) - float(row.get('strike','')))
+            max_loss = f"${width - abs(prem_val):.2f}"
+        except Exception:
+            max_loss = 'n/a'
+        loss_title = 'Max Loss = Strike Width less Credit'
+    else:
+        prem_label = 'Premium Paid'
+        max_loss   = premium
+        loss_title = 'Max Loss = Premium Paid'
+
+    vega_cls = 'neg' if str(vega).startswith('-') else 'pos'
+    vega_disp = vega if str(vega).startswith('-') else f"+{vega}"
+
     try:
         theta_val = float(row.get('theta_daily',0))
         theta_cls = 'neg' if theta_val < 0 else 'pos'
@@ -1136,7 +1161,7 @@ def _build_options_block(row) -> str:
 
     return f"""
     <div class="options-block">
-      <div class="options-title">{type_label} Option Details · Max Loss = Premium Paid</div>
+      <div class="options-title">{type_label} Option Details · {loss_title}</div>
       <div class="options-row">
         <div class="opt-item">
           <label>Strike</label>
@@ -1147,7 +1172,7 @@ def _build_options_block(row) -> str:
           <div class="opt-val">{expiry}</div>
         </div>
         <div class="opt-item">
-          <label>Premium Paid</label>
+          <label>{prem_label}</label>
           <div class="opt-val purple">{premium}/share</div>
         </div>
         <div class="opt-item">
@@ -1166,7 +1191,7 @@ def _build_options_block(row) -> str:
         </div>
         <div class="opt-item">
           <label>Max Loss</label>
-          <div class="opt-val loss">{premium}/share</div>
+          <div class="opt-val loss">{max_loss}/share</div>
         </div>
         <div class="opt-item">
           <label>Contract = 100 shares</label>
@@ -1192,7 +1217,7 @@ def _build_options_block(row) -> str:
         <div class="greek-cell">
           <span class="greek-name">Vega / 1% IV</span>
           <span class="greek-sym">ν</span>
-          <div class="greek-val pos">+{vega}</div>
+          <div class="greek-val {vega_cls}">{vega_disp}</div>
         </div>
       </div>
     </div>"""
