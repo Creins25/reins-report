@@ -1451,6 +1451,12 @@ def _build_closed_html(df) -> str:
     html += (f'<tr><td class="sh" colspan="4">Realized total</td>'
              f'<td class="r sh {tcls}">{total:+.2f}%</td><td class="sh"></td></tr>')
     html += '</tbody></table></div>'
+    html += ('<p style="color:var(--text-muted);font-size:9pt;font-style:italic;'
+             'margin:8px 0 0 0;line-height:1.45">'
+             'Exits are marked at the strategy\u2019s own rule levels, meaning the 21-day '
+             'force-close, the stop, or the take-profit, priced at that session\u2019s market. '
+             'This is a rules-based record of the signals, not a brokerage statement. '
+             'Where a fill differed in practice, the note on that trade says so.</p>')
     return html
 
 
