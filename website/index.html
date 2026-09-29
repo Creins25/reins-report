@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>The Reins Report · 2026-W39</title>
+  <title>The Reins Report · 2026-W40</title>
   <style>
 :root {
   --bg:           #ffffff;
@@ -353,8 +353,9 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "bb26b3b0", "ticker": "ZTS", "entry": 77.73, "direction": "short", "stop": 82.0, "target": 70.0, "instrument": "put", "entry_premium": 4.12, "premium": 4.12, "delta": -0.4, "gamma": 0.03, "build_premium": 7.45, "build_spot": 71.43, "pending": false, "account_risk_pct": 8.2, "strike": 80.0, "expiry": "2026-10-16", "is_credit": false, "short_strike": 70.0, "spread_kind": "bear_put", "pnl_weight": 8.2}, {"id": "847274b9", "ticker": "NCLH", "entry": 15.57, "direction": "short", "stop": 17.0, "target": 14.0, "instrument": "put", "entry_premium": 0.83, "premium": 0.83, "delta": -0.35, "gamma": 0.05, "build_premium": 1.35, "build_spot": 14.31, "pending": false, "account_risk_pct": 19.9, "strike": 16.0, "expiry": "2026-10-16", "is_credit": false, "short_strike": 14.0, "spread_kind": "bear_put", "pnl_weight": 19.9}, {"id": "57905aba", "ticker": "PLTR", "entry": 167.23, "direction": "short", "stop": 188.0, "target": 185.0, "instrument": "call", "entry_premium": 0.96, "premium": 0.96, "delta": -0.15, "gamma": -0.02, "build_premium": 2.5, "build_spot": 187.48, "pending": false, "account_risk_pct": 8.1, "strike": 185.0, "expiry": "2026-10-16", "is_credit": true, "short_strike": 190.0, "spread_kind": "bear_call", "pnl_weight": 1.9248}, {"id": "d1537c4b", "ticker": "WMT", "entry": 106.73, "direction": "short", "stop": 118.0, "target": 115.0, "instrument": "call", "entry_premium": 1.0, "premium": 1.0, "delta": -0.16, "gamma": -0.02, "build_premium": 1.195, "build_spot": 108.73, "pending": false, "account_risk_pct": 8.0, "strike": 115.0, "expiry": "2026-11-20", "is_credit": true, "short_strike": 120.0, "spread_kind": "bear_call", "pnl_weight": 2.0}];
-  var PRICE_ASOF = 'Sep 28, 2026';
+  var PICKS = [{"id": "d1537c4b", "ticker": "WMT", "entry": 106.73, "direction": "short", "stop": 118.0, "target": 115.0, "instrument": "call", "entry_premium": 1.0, "premium": 1.0, "delta": -0.16, "gamma": -0.02, "build_premium": 0.865, "build_spot": 105.7124, "pending": false, "account_risk_pct": 8.0, "strike": 115.0, "expiry": "2026-11-20", "is_credit": true, "short_strike": 120.0, "spread_kind": "bear_call", "pnl_weight": 2.0}];
+  var PRICE_ASOF = 'Sep 29, 2026';
+  var BUILD_TIME = 'Sep 29, 11:40 AM ET';
   var SPY_BASE = 750.59;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -423,10 +424,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     var map = {
       live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
       fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
-      delayed:  '<span style="color:#fbbf24;font-weight:700">⚠️ DELAYED · feed unavailable</span>',
       closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
       eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>',
-      stale:    '<span style="color:rgba(255,255,255,.5)">📊 Last Close</span>'
+      stale:    '<span style="color:rgba(255,255,255,.5)">📊 Last Close</span>',
+      hourly:   '<span style="color:rgba(255,255,255,.5)">📊 Prices refreshed hourly</span>'
     };
     el.innerHTML = map[state] || map.closed;
   }
@@ -665,8 +666,14 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
           if (ts) ts.textContent = PRICE_ASOF ? 'Close ' + PRICE_ASOF : 'Close';
           setIndicator('stale');
         } else {
-          // Market open but nothing came back: never imply LIVE.
-          setIndicator('delayed');
+          // Market open and the browser feed is unreachable. This is the
+          // normal case: the public CORS proxies now require API keys. The
+          // page is rebuilt by CI every hour through the session, so the
+          // prices on screen are hourly closes, not a broken feed. Say that
+          // rather than flashing a scary "feed unavailable" warning.
+          var ts2 = document.getElementById('live-ts');
+          if (ts2) ts2.textContent = BUILD_TIME ? 'Built ' + BUILD_TIME : 'Hourly';
+          setIndicator('hourly');
         }
         return;
       }
@@ -739,8 +746,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
       </div>
     </div>
     <div class="masthead-right">
-      <div class="pub-week">2026-W39</div>
-      <div class="pub-date">September 21 to September 27, 2026 · Updated Sep 29, 2026</div>
+      <div class="pub-week">2026-W40</div>
+      <div class="pub-date">September 28 to October 4, 2026 · Updated Sep 29, 2026</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
@@ -754,13 +761,12 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 <div class="page-wrap">
 
   <div class="market-overview">
-    <div class="overview-kicker">Market Structure · 2026-W39</div>
-    <div class="overview-theme">Booked NRG at plus 71% and both puts are deep in the money. PLTR is the one going the wrong way. Second straight week with no directional picks, so premium selling only.</div>
-    <div class="overview-body"><p>SPY fell 0.34% and the VIX dropped to 14.8, but utilities lost 3.0% and financials 2.4%. Only tech and health care closed green.</p>
-<p>The short book did the work. ZTS is up 72%, NCLH 69%, and NRG hit its target at plus 71%, so I bought that one back. The part I like most is that ZTS fell 2.2% in a week its own sector rose 1.8%. That is exactly the relative weakness the model was pointing at.</p>
-<p>PLTR is the problem. It rallied 6% to $177.64 and the bear call is down 67%, sitting four percent under my 185 strike. I sold that call at the level that failed in August and the level is holding better than I expected. It closes Friday either way.</p>
-<p>The October book hits its 21-day force-close on Friday, so ZTS, NCLH and PLTR all clear by the 25th. The new WMT spread is a November expiry and runs to October 30.</p>
-<p>No directional picks for the second week running. Sixty-six longs and fifty-five shorts survived alignment and none cleared the last gate. I added one bear call on WMT, which was all the capital cap allowed.</p></div>
+    <div class="overview-kicker">Market Structure · 2026-W40</div>
+    <div class="overview-theme">Tech ripped and broke my PLTR short. Closed the whole October book two sessions late, which cost real money on NCLH. Net plus $445 and realized P/L is positive again.</div>
+    <div class="overview-body"><p>Tech ripped and that is the whole story. QQQ rose 3.2% and tech 3.5% while utilities fell 3.9% and energy 3.5%. Rates kept climbing and TLT lost another 2.4%.</p>
+<p>I closed the entire October book on Tuesday, two sessions after the Friday force-close. That delay cost me. ZTS still came off at plus 78% and NCLH at plus 26%, but NCLH was up 69% a week earlier and gave most of it back when the stock rallied from $14.12 to $14.94 while I was not watching. The rule exists so that does not happen, and I broke it.</p>
+<p>PLTR was the real loss. The tech rally pushed it through my 185 strike to $189.67 on Friday, so I bought the spread back for $2.32 against the $0.96 I collected, down 142% and minus $136. Capping it there beat risking the full $404.</p>
+<p>Net the three came off plus $445, which puts realized P/L back in the green at plus 3.2%. Only the WMT call spread is left and I am 8% deployed, so there is room for a full book when I next run the model.</p></div>
   </div>
 
   <div class="about-panel">
@@ -786,504 +792,12 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">22</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">4</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">18</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val loss" id="unrealized-pnl-val" data-realized="-5.7466">-5.75%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val gain" id="spy-return-val">+2.00%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val loss" id="alpha-val" data-spybuild="2.0011">-7.75%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">22</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">1</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">21</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="3.2284">+3.23%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val gain" id="spy-return-val">+1.75%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="1.7546">+1.47%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
   </section>
 
   <section>
     <div class="section-label">📈 Open Positions</div>
     <div class="picks-list">
-        <div class="pick-card short">
-          <div class="pick-header">
-            <div class="pick-title-group">
-              <div class="pick-ticker">ZTS</div>
-              <div class="pick-sub">Health Care · Medium</div>
-            </div>
-            <div class="pick-badges">
-              <span class="badge b-short">SHORT</span>
-              <span class="badge b-put">PUT</span>
-              <span class="badge b-above">Strong</span>
-            </div>
-          </div>
-          <div class="pick-body">
-            <div class="pick-metrics">
-              <div class="metric">
-                <label>Entry (Underlying)</label>
-                <div class="metric-val">$77.73</div>
-              </div>
-              <div class="metric">
-                <label>Current &amp; P&amp;L</label>
-                <div id="cp-wrap-bb26b3b0" class="metric-val flat">
-                  <span id="cp-bb26b3b0">$77.73</span>
-                  <span id="pnl-bb26b3b0" class="pnl-pill flat">+0.0%</span>
-                </div>
-              </div>
-              <div class="metric">
-                <label>Target</label>
-                <div class="metric-val gain">$70.00</div>
-              </div>
-              <div class="metric">
-                <label>Stop</label>
-                <div class="metric-val loss">$82.00</div>
-              </div>
-            </div>
-
-            <div class="pick-progress">
-              <div class="progress-row">
-                <span class="p-stop">$82.00 stop</span>
-                <span class="p-rr">R/R 1.8:1</span>
-                <span class="p-target">$70.00 target</span>
-              </div>
-              <div class="progress-track">
-                <div id="pfill-bb26b3b0" class="progress-fill flat" style="width:0.0%"></div>
-              </div>
-            </div>
-
-            
-    <div class="options-block">
-      <div class="options-title">PUT Option Details · Max Loss = Premium Paid</div>
-      <div class="options-row">
-        <div class="opt-item">
-          <label>Strike</label>
-          <div class="opt-val purple">$80.00</div>
-        </div>
-        <div class="opt-item">
-          <label>Expiry</label>
-          <div class="opt-val">2026-10-16</div>
-        </div>
-        <div class="opt-item">
-          <label>Premium Paid</label>
-          <div class="opt-val purple">$4.12/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Break-Even at Expiry</label>
-          <div class="opt-val">$75.88</div>
-        </div>
-      </div>
-      <div class="options-row" style="margin-bottom:12px">
-        <div class="opt-item">
-          <label>IV Used</label>
-          <div class="opt-val">37.0%</div>
-        </div>
-        <div class="opt-item">
-          <label>Leverage</label>
-          <div class="opt-val purple">2.0×</div>
-        </div>
-        <div class="opt-item">
-          <label>Max Loss</label>
-          <div class="opt-val loss">$4.12/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Contract = 100 shares</label>
-          <div class="opt-val">×100</div>
-        </div>
-      </div>
-      <div class="greeks-row">
-        <div class="greek-cell">
-          <span class="greek-name">Delta</span>
-          <span class="greek-sym">Δ</span>
-          <div class="greek-val neg">-0.400</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Gamma</span>
-          <span class="greek-sym">Γ</span>
-          <div class="greek-val">0.0300</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Theta / day</span>
-          <span class="greek-sym">Θ</span>
-          <div class="greek-val neg">-0.020</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Vega / 1% IV</span>
-          <span class="greek-sym">ν</span>
-          <div class="greek-val pos">+0.050</div>
-        </div>
-      </div>
-    </div>
-
-            <div class="pick-sizing-row">
-              <span><strong>Position size:</strong> <span class="size-pill">8.2% of account</span></span>
-              <span><strong>Days held:</strong> 36d</span>
-              <span><strong>Instrument:</strong> Put</span>
-              <span><strong>Entered:</strong> Aug 24, 2026</span>
-            </div>
-
-            <div class="pick-thesis">ZTS is the model's strongest health-care short on its own factors: broken momentum (19th pct) and worst-decile estimate revisions. The catch is the sector just ripped (+4.3%), so this is a relative-weakness bet against a hot tape. Kept to one spread because of that headwind and a slightly wide bid-ask.</div>
-            <div class="pick-catalyst">Negative revision trend and weak momentum, but fighting a health-care sector rally, so sized small and defined-risk.</div>
-
-            
-
-            
-    <div class="pick-chart">
-      <div class="chart-label">30-Day Price · ZTS</div>
-      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
-  <defs>
-    <linearGradient id="fill-ZTS" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
-      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,83.0 33.0,75.6 52.0,55.1 71.0,67.6 90.0,47.2 109.0,51.4 128.0,50.5 147.0,48.8 166.0,67.6 185.0,50.1 204.0,51.9 223.0,50.8 242.0,58.9 261.0,58.0 280.0,61.7 299.0,78.6 318.0,80.5 337.0,83.8 356.0,83.0 375.0,77.8 394.0,79.6 413.0,82.8 432.0,82.6 451.0,94.8 470.0,95.4 489.0,83.8 508.0,93.3 527.0,103.3 546.0,97.5 546.0,108" fill="url(#fill-ZTS)"/>
-  <!-- Target line -->
-  <line x1="14" y1="105.4" x2="546" y2="105.4"
-        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="105.4" dy="4" font-size="9" fill="#15803d"
-        font-family="monospace" font-weight="700">$70</text>
-  <!-- Entry line -->
-  <line x1="14" y1="47.2" x2="546" y2="47.2"
-        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-  <text x="548" y="47.2" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">$78</text>
-  <!-- Stop line -->
-  <line x1="14" y1="15.1" x2="546" y2="15.1"
-        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="15.1" dy="4" font-size="9" fill="#b91c1c"
-        font-family="monospace">$82</text>
-  <!-- Price line -->
-  <polyline points="14.0,83.0 33.0,75.6 52.0,55.1 71.0,67.6 90.0,47.2 109.0,51.4 128.0,50.5 147.0,48.8 166.0,67.6 185.0,50.1 204.0,51.9 223.0,50.8 242.0,58.9 261.0,58.0 280.0,61.7 299.0,78.6 318.0,80.5 337.0,83.8 356.0,83.0 375.0,77.8 394.0,79.6 413.0,82.8 432.0,82.6 451.0,94.8 470.0,95.4 489.0,83.8 508.0,93.3 527.0,103.3 546.0,97.5" fill="none" stroke="#0d1f35"
-            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- Last price dot -->
-  <circle cx="546.0" cy="97.5" r="3.5" fill="#0d1f35"/>
-</svg></div>
-      <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $70</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $78</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $82</span>
-      </div>
-    </div>
-          </div>
-        </div>
-        
-        <div class="pick-card short">
-          <div class="pick-header">
-            <div class="pick-title-group">
-              <div class="pick-ticker">NCLH</div>
-              <div class="pick-sub">Consumer Discretionary · Medium</div>
-            </div>
-            <div class="pick-badges">
-              <span class="badge b-short">SHORT</span>
-              <span class="badge b-put">PUT</span>
-              <span class="badge b-above">Strong</span>
-            </div>
-          </div>
-          <div class="pick-body">
-            <div class="pick-metrics">
-              <div class="metric">
-                <label>Entry (Underlying)</label>
-                <div class="metric-val">$15.57</div>
-              </div>
-              <div class="metric">
-                <label>Current &amp; P&amp;L</label>
-                <div id="cp-wrap-847274b9" class="metric-val flat">
-                  <span id="cp-847274b9">$15.57</span>
-                  <span id="pnl-847274b9" class="pnl-pill flat">+0.0%</span>
-                </div>
-              </div>
-              <div class="metric">
-                <label>Target</label>
-                <div class="metric-val gain">$14.00</div>
-              </div>
-              <div class="metric">
-                <label>Stop</label>
-                <div class="metric-val loss">$17.00</div>
-              </div>
-            </div>
-
-            <div class="pick-progress">
-              <div class="progress-row">
-                <span class="p-stop">$17.00 stop</span>
-                <span class="p-rr">R/R 1.1:1</span>
-                <span class="p-target">$14.00 target</span>
-              </div>
-              <div class="progress-track">
-                <div id="pfill-847274b9" class="progress-fill flat" style="width:0.0%"></div>
-              </div>
-            </div>
-
-            
-    <div class="options-block">
-      <div class="options-title">PUT Option Details · Max Loss = Premium Paid</div>
-      <div class="options-row">
-        <div class="opt-item">
-          <label>Strike</label>
-          <div class="opt-val purple">$16.00</div>
-        </div>
-        <div class="opt-item">
-          <label>Expiry</label>
-          <div class="opt-val">2026-10-16</div>
-        </div>
-        <div class="opt-item">
-          <label>Premium Paid</label>
-          <div class="opt-val purple">$0.83/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Break-Even at Expiry</label>
-          <div class="opt-val">$15.17</div>
-        </div>
-      </div>
-      <div class="options-row" style="margin-bottom:12px">
-        <div class="opt-item">
-          <label>IV Used</label>
-          <div class="opt-val">45.0%</div>
-        </div>
-        <div class="opt-item">
-          <label>Leverage</label>
-          <div class="opt-val purple">1.4×</div>
-        </div>
-        <div class="opt-item">
-          <label>Max Loss</label>
-          <div class="opt-val loss">$0.83/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Contract = 100 shares</label>
-          <div class="opt-val">×100</div>
-        </div>
-      </div>
-      <div class="greeks-row">
-        <div class="greek-cell">
-          <span class="greek-name">Delta</span>
-          <span class="greek-sym">Δ</span>
-          <div class="greek-val neg">-0.350</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Gamma</span>
-          <span class="greek-sym">Γ</span>
-          <div class="greek-val">0.0500</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Theta / day</span>
-          <span class="greek-sym">Θ</span>
-          <div class="greek-val neg">-0.010</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Vega / 1% IV</span>
-          <span class="greek-sym">ν</span>
-          <div class="greek-val pos">+0.020</div>
-        </div>
-      </div>
-    </div>
-
-            <div class="pick-sizing-row">
-              <span><strong>Position size:</strong> <span class="size-pill">19.9% of account</span></span>
-              <span><strong>Days held:</strong> 23d</span>
-              <span><strong>Instrument:</strong> Put</span>
-              <span><strong>Entered:</strong> Sep 06, 2026</span>
-            </div>
-
-            <div class="pick-thesis">NCLH is the strongest short in the model at a 2.1 composite, bottom 2% of the universe. Broken momentum (15th percentile) and worst-decile estimate revisions (4th percentile), with short interest confirming at the 23rd percentile. Best expected value per dollar of anything that cleared the screen (+$0.38) and a 46% probability of profit, which is high for a directional debit spread. Tight options at a 5.3% bid-ask.</div>
-            <div class="pick-catalyst">Consumer Discretionary was the weakest sector on the tape this week at -2.0%, and estimate revisions are still falling. No earnings in the 40-day window.</div>
-
-            
-
-            
-    <div class="pick-chart">
-      <div class="chart-label">30-Day Price · NCLH</div>
-      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
-  <defs>
-    <linearGradient id="fill-NCLH" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
-      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,14.0 33.0,26.6 52.0,32.6 71.0,45.6 90.0,34.8 109.0,35.2 128.0,34.4 147.0,38.1 166.0,47.8 185.0,47.8 204.0,59.1 223.0,74.8 242.0,71.7 261.0,71.3 280.0,71.7 299.0,75.7 318.0,87.7 337.0,93.8 356.0,88.3 375.0,90.5 394.0,100.3 413.0,94.7 432.0,97.8 451.0,103.8 470.0,101.1 489.0,101.6 508.0,102.5 527.0,102.3 546.0,93.0 546.0,108" fill="url(#fill-NCLH)"/>
-  <!-- Target line -->
-  <line x1="14" y1="106.5" x2="546" y2="106.5"
-        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="106.5" dy="4" font-size="9" fill="#15803d"
-        font-family="monospace" font-weight="700">$14</text>
-  <!-- Entry line -->
-  <line x1="14" y1="71.7" x2="546" y2="71.7"
-        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-  <text x="548" y="71.7" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">$16</text>
-  <!-- Stop line -->
-  <line x1="14" y1="40.1" x2="546" y2="40.1"
-        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="40.1" dy="4" font-size="9" fill="#b91c1c"
-        font-family="monospace">$17</text>
-  <!-- Price line -->
-  <polyline points="14.0,14.0 33.0,26.6 52.0,32.6 71.0,45.6 90.0,34.8 109.0,35.2 128.0,34.4 147.0,38.1 166.0,47.8 185.0,47.8 204.0,59.1 223.0,74.8 242.0,71.7 261.0,71.3 280.0,71.7 299.0,75.7 318.0,87.7 337.0,93.8 356.0,88.3 375.0,90.5 394.0,100.3 413.0,94.7 432.0,97.8 451.0,103.8 470.0,101.1 489.0,101.6 508.0,102.5 527.0,102.3 546.0,93.0" fill="none" stroke="#0d1f35"
-            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- Last price dot -->
-  <circle cx="546.0" cy="93.0" r="3.5" fill="#0d1f35"/>
-</svg></div>
-      <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $14</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $16</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $17</span>
-      </div>
-    </div>
-          </div>
-        </div>
-        
-        <div class="pick-card short">
-          <div class="pick-header">
-            <div class="pick-title-group">
-              <div class="pick-ticker">PLTR</div>
-              <div class="pick-sub">Information Technology · Medium</div>
-            </div>
-            <div class="pick-badges">
-              <span class="badge b-short">SHORT</span>
-              <span class="badge b-call">CALL</span>
-              <span class="badge b-spec">Speculative</span>
-            </div>
-          </div>
-          <div class="pick-body">
-            <div class="pick-metrics">
-              <div class="metric">
-                <label>Entry (Underlying)</label>
-                <div class="metric-val">$167.23</div>
-              </div>
-              <div class="metric">
-                <label>Current &amp; P&amp;L</label>
-                <div id="cp-wrap-57905aba" class="metric-val flat">
-                  <span id="cp-57905aba">$167.23</span>
-                  <span id="pnl-57905aba" class="pnl-pill flat">+0.0%</span>
-                </div>
-              </div>
-              <div class="metric">
-                <label>Target</label>
-                <div class="metric-val gain">$185.00</div>
-              </div>
-              <div class="metric">
-                <label>Stop</label>
-                <div class="metric-val loss">$188.00</div>
-              </div>
-            </div>
-
-            <div class="pick-progress">
-              <div class="progress-row">
-                <span class="p-stop">$188.00 stop</span>
-                <span class="p-rr">R/R -0.9:1</span>
-                <span class="p-target">$185.00 target</span>
-              </div>
-              <div class="progress-track">
-                <div id="pfill-57905aba" class="progress-fill flat" style="width:0.0%"></div>
-              </div>
-            </div>
-
-            
-    <div class="options-block">
-      <div class="options-title">CALL Option Details · Max Loss = Strike Width less Credit</div>
-      <div class="options-row">
-        <div class="opt-item">
-          <label>Strike</label>
-          <div class="opt-val purple">$185.00</div>
-        </div>
-        <div class="opt-item">
-          <label>Expiry</label>
-          <div class="opt-val">2026-10-16</div>
-        </div>
-        <div class="opt-item">
-          <label>Credit Collected</label>
-          <div class="opt-val purple">$0.96/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Break-Even at Expiry</label>
-          <div class="opt-val">$185.96</div>
-        </div>
-      </div>
-      <div class="options-row" style="margin-bottom:12px">
-        <div class="opt-item">
-          <label>IV Used</label>
-          <div class="opt-val">48.0%</div>
-        </div>
-        <div class="opt-item">
-          <label>Leverage</label>
-          <div class="opt-val purple">1.5×</div>
-        </div>
-        <div class="opt-item">
-          <label>Max Loss</label>
-          <div class="opt-val loss">$4.04/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Contract = 100 shares</label>
-          <div class="opt-val">×100</div>
-        </div>
-      </div>
-      <div class="greeks-row">
-        <div class="greek-cell">
-          <span class="greek-name">Delta</span>
-          <span class="greek-sym">Δ</span>
-          <div class="greek-val neg">-0.150</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Gamma</span>
-          <span class="greek-sym">Γ</span>
-          <div class="greek-val">-0.0200</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Theta / day</span>
-          <span class="greek-sym">Θ</span>
-          <div class="greek-val pos">0.030</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Vega / 1% IV</span>
-          <span class="greek-sym">ν</span>
-          <div class="greek-val neg">-0.050</div>
-        </div>
-      </div>
-    </div>
-
-            <div class="pick-sizing-row">
-              <span><strong>Position size:</strong> <span class="size-pill">8.1% of account</span></span>
-              <span><strong>Days held:</strong> 16d</span>
-              <span><strong>Instrument:</strong> Call</span>
-              <span><strong>Entered:</strong> Sep 13, 2026</span>
-            </div>
-
-            <div class="pick-thesis">Premium-sell against the AI deceleration story. PLTR made its 2026 high of $186.38 on August 31 and has fallen 10.3% since, including 4.1% this week, so I am selling the 185 call right at the level that just failed. The bear case is multiple compression, not collapse: AI capex is still growing around 40%, but AI service revenue is roughly $200 billion against capex more than three times that, and long-end yields keep rising against a name at a triple-digit forward multiple. I do not need PLTR to fall. I need it not to rally 11% in 33 days.</div>
-            <div class="pick-catalyst">Rising long-end yields pressuring long-duration software, the widening gap between AI capex and AI revenue, and growing political resistance to data centre construction. IV rank above 70 pays me to sell that upside.</div>
-
-            
-
-            
-    <div class="pick-chart">
-      <div class="chart-label">30-Day Price · PLTR</div>
-      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
-  <defs>
-    <linearGradient id="fill-PLTR" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
-      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,82.7 33.0,86.1 52.0,73.8 71.0,77.9 90.0,57.8 109.0,71.4 128.0,82.1 147.0,66.0 166.0,37.7 185.0,36.4 204.0,36.1 223.0,57.9 242.0,93.1 261.0,49.1 280.0,76.7 299.0,90.3 318.0,92.9 337.0,105.2 356.0,100.6 375.0,80.1 394.0,82.7 413.0,76.7 432.0,70.3 451.0,65.6 470.0,47.2 489.0,40.8 508.0,17.9 527.0,15.2 546.0,25.1 546.0,108" fill="url(#fill-PLTR)"/>
-  <!-- Target line -->
-  <line x1="14" y1="40.8" x2="546" y2="40.8"
-        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="40.8" dy="4" font-size="9" fill="#15803d"
-        font-family="monospace" font-weight="700">$185</text>
-  <!-- Entry line -->
-  <line x1="14" y1="100.6" x2="546" y2="100.6"
-        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-  <text x="548" y="100.6" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">$167</text>
-  <!-- Stop line -->
-  <line x1="14" y1="30.7" x2="546" y2="30.7"
-        stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="30.7" dy="4" font-size="9" fill="#b91c1c"
-        font-family="monospace">$188</text>
-  <!-- Price line -->
-  <polyline points="14.0,82.7 33.0,86.1 52.0,73.8 71.0,77.9 90.0,57.8 109.0,71.4 128.0,82.1 147.0,66.0 166.0,37.7 185.0,36.4 204.0,36.1 223.0,57.9 242.0,93.1 261.0,49.1 280.0,76.7 299.0,90.3 318.0,92.9 337.0,105.2 356.0,100.6 375.0,80.1 394.0,82.7 413.0,76.7 432.0,70.3 451.0,65.6 470.0,47.2 489.0,40.8 508.0,17.9 527.0,15.2 546.0,25.1" fill="none" stroke="#0d1f35"
-            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- Last price dot -->
-  <circle cx="546.0" cy="25.1" r="3.5" fill="#0d1f35"/>
-</svg></div>
-      <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $185</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $167</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $188</span>
-      </div>
-    </div>
-          </div>
-        </div>
-        
         <div class="pick-card short">
           <div class="pick-header">
             <div class="pick-title-group">
@@ -1417,7 +931,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,38.4 33.0,33.4 52.0,38.6 71.0,99.4 90.0,98.8 109.0,82.5 128.0,89.0 147.0,95.0 166.0,105.0 185.0,102.3 204.0,92.0 223.0,85.8 242.0,84.8 261.0,71.3 280.0,78.7 299.0,85.1 318.0,86.4 337.0,86.9 356.0,78.7 375.0,67.4 394.0,73.2 413.0,76.6 432.0,80.8 451.0,81.1 470.0,77.0 489.0,61.4 508.0,59.0 527.0,76.1 546.0,73.8 546.0,108" fill="url(#fill-WMT)"/>
+  <polygon points="14.0,108 14.0,33.4 32.3,38.6 50.7,99.4 69.0,98.8 87.4,82.5 105.7,89.0 124.1,95.0 142.4,105.0 160.8,102.3 179.1,92.0 197.4,85.8 215.8,84.8 234.1,71.3 252.5,78.7 270.8,85.1 289.2,86.4 307.5,86.9 325.9,78.7 344.2,67.4 362.6,73.2 380.9,76.6 399.2,80.8 417.6,81.1 435.9,77.0 454.3,61.4 472.6,59.0 491.0,76.1 509.3,73.8 527.7,69.5 546.0,87.0 546.0,108" fill="url(#fill-WMT)"/>
   <!-- Target line -->
   <line x1="14" y1="32.9" x2="546" y2="32.9"
         stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
@@ -1434,10 +948,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="15.4" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$118</text>
   <!-- Price line -->
-  <polyline points="14.0,38.4 33.0,33.4 52.0,38.6 71.0,99.4 90.0,98.8 109.0,82.5 128.0,89.0 147.0,95.0 166.0,105.0 185.0,102.3 204.0,92.0 223.0,85.8 242.0,84.8 261.0,71.3 280.0,78.7 299.0,85.1 318.0,86.4 337.0,86.9 356.0,78.7 375.0,67.4 394.0,73.2 413.0,76.6 432.0,80.8 451.0,81.1 470.0,77.0 489.0,61.4 508.0,59.0 527.0,76.1 546.0,73.8" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,33.4 32.3,38.6 50.7,99.4 69.0,98.8 87.4,82.5 105.7,89.0 124.1,95.0 142.4,105.0 160.8,102.3 179.1,92.0 197.4,85.8 215.8,84.8 234.1,71.3 252.5,78.7 270.8,85.1 289.2,86.4 307.5,86.9 325.9,78.7 344.2,67.4 362.6,73.2 380.9,76.6 399.2,80.8 417.6,81.1 435.9,77.0 454.3,61.4 472.6,59.0 491.0,76.1 509.3,73.8 527.7,69.5 546.0,87.0" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="73.8" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="87.0" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $115</span>
@@ -1452,12 +966,12 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">🗂 Closed Positions</div>
-    <div class="table-wrap"><table><thead><tr><th>Ticker</th><th>Week</th><th>Structure</th><th class="r">Return</th><th class="r">Account</th><th>Outcome</th></tr></thead><tbody><tr><td class="nm">NRG</td><td>W38</td><td>bear call</td><td class="r gain">+70.9%</td><td class="r gain">+1.22%</td><td>Target hit</td></tr><tr><td class="nm">FCX</td><td>W35</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-3.80%</td><td>Stopped out</td></tr><tr><td class="nm">TGT</td><td>W37</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-4.75%</td><td>Stopped out</td></tr><tr><td class="nm">CNC</td><td>W32</td><td>bull call</td><td class="r gain">+15.2%</td><td class="r gain">+1.15%</td><td>Closed</td></tr><tr><td class="nm">BLDR</td><td>W32</td><td>bear put</td><td class="r loss">-50.0%</td><td class="r loss">-2.30%</td><td>Stopped out</td></tr><tr><td class="nm">COIN</td><td>W27</td><td>bear put</td><td class="r gain">+0.4%</td><td class="r gain">+0.06%</td><td>Closed</td></tr><tr><td class="nm">CSCO</td><td>W27</td><td>bear call</td><td class="r gain">+12.0%</td><td class="r gain">+0.20%</td><td>Target hit</td></tr><tr><td class="nm">HPE</td><td>W27</td><td>bear call</td><td class="r loss">-37.6%</td><td class="r loss">-0.76%</td><td>Closed</td></tr><tr><td class="nm">SMCI</td><td>W30</td><td>long put</td><td class="r loss">-65.6%</td><td class="r loss">-3.81%</td><td>Closed</td></tr><tr><td class="nm">BX</td><td>W25</td><td>bear put</td><td class="r gain">+55.9%</td><td class="r gain">+5.92%</td><td>Target hit</td></tr><tr><td class="nm">SMCI</td><td>W25</td><td>bear call</td><td class="r gain">+39.6%</td><td class="r gain">+0.38%</td><td>Target hit</td></tr><tr><td class="nm">CLX</td><td>W23</td><td>bear put</td><td class="r loss">-71.4%</td><td class="r loss">-4.50%</td><td>Stopped out</td></tr><tr><td class="nm">MO</td><td>W23</td><td>bear call</td><td class="r loss">-38.3%</td><td class="r loss">-0.72%</td><td>Closed</td></tr><tr><td class="nm">CNC</td><td>W23</td><td>bull call</td><td class="r gain">+50.3%</td><td class="r gain">+5.83%</td><td>Target hit</td></tr><tr><td class="nm">AMZN</td><td>W22</td><td>long call</td><td class="r gain">+3.6%</td><td class="r gain">+0.05%</td><td>Target hit</td></tr><tr><td class="nm">JPM</td><td>W22</td><td>equity</td><td class="r loss">-2.3%</td><td class="r loss">-0.03%</td><td>Closed</td></tr><tr><td class="nm">NVDA</td><td>W22</td><td>long call</td><td class="r loss">-44.3%</td><td class="r loss">-0.89%</td><td>Stopped out</td></tr><tr><td class="nm">META</td><td>W22</td><td>long call</td><td class="r gain">+49.6%</td><td class="r gain">+0.99%</td><td>Target hit</td></tr><tr><td class="sh" colspan="4">Realized total</td><td class="r sh loss">-5.75%</td><td class="sh"></td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>Ticker</th><th>Week</th><th>Structure</th><th class="r">Return</th><th class="r">Account</th><th>Outcome</th></tr></thead><tbody><tr><td class="nm">ZTS</td><td>W35</td><td>bear put</td><td class="r gain">+78.4%</td><td class="r gain">+6.43%</td><td>Target hit</td></tr><tr><td class="nm">NCLH</td><td>W37</td><td>bear put</td><td class="r gain">+26.5%</td><td class="r gain">+5.27%</td><td>Target hit</td></tr><tr><td class="nm">PLTR</td><td>W38</td><td>bear call</td><td class="r loss">-141.7%</td><td class="r loss">-2.73%</td><td>Stopped out</td></tr><tr><td class="nm">NRG</td><td>W38</td><td>bear call</td><td class="r gain">+70.9%</td><td class="r gain">+1.22%</td><td>Target hit</td></tr><tr><td class="nm">FCX</td><td>W35</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-3.80%</td><td>Stopped out</td></tr><tr><td class="nm">TGT</td><td>W37</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-4.75%</td><td>Stopped out</td></tr><tr><td class="nm">CNC</td><td>W32</td><td>bull call</td><td class="r gain">+15.2%</td><td class="r gain">+1.15%</td><td>Closed</td></tr><tr><td class="nm">BLDR</td><td>W32</td><td>bear put</td><td class="r loss">-50.0%</td><td class="r loss">-2.30%</td><td>Stopped out</td></tr><tr><td class="nm">COIN</td><td>W27</td><td>bear put</td><td class="r gain">+0.4%</td><td class="r gain">+0.06%</td><td>Closed</td></tr><tr><td class="nm">CSCO</td><td>W27</td><td>bear call</td><td class="r gain">+12.0%</td><td class="r gain">+0.20%</td><td>Target hit</td></tr><tr><td class="nm">HPE</td><td>W27</td><td>bear call</td><td class="r loss">-37.6%</td><td class="r loss">-0.76%</td><td>Closed</td></tr><tr><td class="nm">SMCI</td><td>W30</td><td>long put</td><td class="r loss">-65.6%</td><td class="r loss">-3.81%</td><td>Closed</td></tr><tr><td class="nm">BX</td><td>W25</td><td>bear put</td><td class="r gain">+55.9%</td><td class="r gain">+5.92%</td><td>Target hit</td></tr><tr><td class="nm">SMCI</td><td>W25</td><td>bear call</td><td class="r gain">+39.6%</td><td class="r gain">+0.38%</td><td>Target hit</td></tr><tr><td class="nm">CLX</td><td>W23</td><td>bear put</td><td class="r loss">-71.4%</td><td class="r loss">-4.50%</td><td>Stopped out</td></tr><tr><td class="nm">MO</td><td>W23</td><td>bear call</td><td class="r loss">-38.3%</td><td class="r loss">-0.72%</td><td>Closed</td></tr><tr><td class="nm">CNC</td><td>W23</td><td>bull call</td><td class="r gain">+50.3%</td><td class="r gain">+5.83%</td><td>Target hit</td></tr><tr><td class="nm">AMZN</td><td>W22</td><td>long call</td><td class="r gain">+3.6%</td><td class="r gain">+0.05%</td><td>Target hit</td></tr><tr><td class="nm">JPM</td><td>W22</td><td>equity</td><td class="r loss">-2.3%</td><td class="r loss">-0.03%</td><td>Closed</td></tr><tr><td class="nm">NVDA</td><td>W22</td><td>long call</td><td class="r loss">-44.3%</td><td class="r loss">-0.89%</td><td>Stopped out</td></tr><tr><td class="nm">META</td><td>W22</td><td>long call</td><td class="r gain">+49.6%</td><td class="r gain">+0.99%</td><td>Target hit</td></tr><tr><td class="sh" colspan="4">Realized total</td><td class="r sh gain">+3.23%</td><td class="sh"></td></tr></tbody></table></div>
   </section>
 
   <section>
     <div class="section-label">🌐 Cross-Asset Scoreboard</div>
-    <div class="table-wrap"><table><thead><tr><th>Instrument</th><th class="r">Close</th><th class="r">1W Chg</th><th class="r">YTD Chg</th></tr></thead><tbody><tr><td class="sh" colspan="4">Equities</td></tr><tr><td class="nm">SPY</td><td class="r">761.69</td><td class="r down">-0.34%</td><td class="r up">+11.5%</td></tr><tr><td class="nm">QQQ</td><td class="r">721.45</td><td class="r up">+0.92%</td><td class="r up">+17.7%</td></tr><tr><td class="nm">IWM</td><td class="r">284.10</td><td class="r down">-1.66%</td><td class="r up">+14.2%</td></tr><tr><td class="sh" colspan="4">Sector ETFs</td></tr><tr><td class="nm">XLK (Tech)</td><td class="r">189.60</td><td class="r up">+1.03%</td><td class="r up">+31.4%</td></tr><tr><td class="nm">XLF (Financials)</td><td class="r">55.86</td><td class="r down">-2.43%</td><td class="r up">+1.7%</td></tr><tr><td class="nm">XLV (Health Care)</td><td class="r">168.39</td><td class="r up">+1.83%</td><td class="r up">+8.3%</td></tr><tr><td class="nm">XLE (Energy)</td><td class="r">64.31</td><td class="r down">-1.27%</td><td class="r up">+40.9%</td></tr><tr><td class="nm">XLI (Industrials)</td><td class="r">169.75</td><td class="r down">-1.52%</td><td class="r up">+7.5%</td></tr><tr><td class="nm">XLY (Disc.)</td><td class="r">111.03</td><td class="r down">-1.71%</td><td class="r down">-6.2%</td></tr><tr><td class="nm">XLP (Staples)</td><td class="r">82.80</td><td class="r down">-0.70%</td><td class="r up">+6.6%</td></tr><tr><td class="nm">XLC (Comm.)</td><td class="r">110.81</td><td class="r down">-1.59%</td><td class="r down">-5.2%</td></tr><tr><td class="nm">XLB (Materials)</td><td class="r">49.99</td><td class="r down">-1.88%</td><td class="r up">+8.4%</td></tr><tr><td class="nm">XLRE (RE)</td><td class="r">42.53</td><td class="r down">-2.05%</td><td class="r up">+5.3%</td></tr><tr><td class="nm">XLU (Utilities)</td><td class="r">41.10</td><td class="r down">-3.04%</td><td class="r down">-4.8%</td></tr><tr><td class="sh" colspan="4">Vol & Credit</td></tr><tr><td class="nm">^VIX</td><td class="r">14.81</td><td class="r down">-6.50%</td><td class="r up">+2.1%</td></tr><tr><td class="nm">TLT</td><td class="r">81.25</td><td class="r up">+0.47%</td><td class="r down">-6.6%</td></tr><tr><td class="nm">HYG</td><td class="r">78.53</td><td class="r down">-0.09%</td><td class="r down">-2.7%</td></tr></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>Instrument</th><th class="r">Close</th><th class="r">1W Chg</th><th class="r">YTD Chg</th></tr></thead><tbody><tr><td class="sh" colspan="4">Equities</td></tr><tr><td class="nm">SPY</td><td class="r">771.35</td><td class="r up">+1.27%</td><td class="r up">+12.9%</td></tr><tr><td class="nm">QQQ</td><td class="r">744.50</td><td class="r up">+3.19%</td><td class="r up">+21.4%</td></tr><tr><td class="nm">IWM</td><td class="r">281.97</td><td class="r down">-0.75%</td><td class="r up">+13.3%</td></tr><tr><td class="sh" colspan="4">Sector ETFs</td></tr><tr><td class="nm">XLK (Tech)</td><td class="r">196.27</td><td class="r up">+3.52%</td><td class="r up">+36.0%</td></tr><tr><td class="nm">XLF (Financials)</td><td class="r">54.84</td><td class="r down">-1.83%</td><td class="r down">-0.2%</td></tr><tr><td class="nm">XLV (Health Care)</td><td class="r">170.70</td><td class="r up">+1.37%</td><td class="r up">+9.8%</td></tr><tr><td class="nm">XLE (Energy)</td><td class="r">62.04</td><td class="r down">-3.53%</td><td class="r up">+35.9%</td></tr><tr><td class="nm">XLI (Industrials)</td><td class="r">170.43</td><td class="r up">+0.40%</td><td class="r up">+7.9%</td></tr><tr><td class="nm">XLY (Disc.)</td><td class="r">110.56</td><td class="r down">-0.42%</td><td class="r down">-6.6%</td></tr><tr><td class="nm">XLP (Staples)</td><td class="r">82.06</td><td class="r down">-0.89%</td><td class="r up">+5.6%</td></tr><tr><td class="nm">XLC (Comm.)</td><td class="r">112.96</td><td class="r up">+1.94%</td><td class="r down">-3.4%</td></tr><tr><td class="nm">XLB (Materials)</td><td class="r">49.80</td><td class="r down">-0.38%</td><td class="r up">+8.0%</td></tr><tr><td class="nm">XLRE (RE)</td><td class="r">41.56</td><td class="r down">-2.28%</td><td class="r up">+2.9%</td></tr><tr><td class="nm">XLU (Utilities)</td><td class="r">39.51</td><td class="r down">-3.87%</td><td class="r down">-8.5%</td></tr><tr><td class="sh" colspan="4">Vol & Credit</td></tr><tr><td class="nm">^VIX</td><td class="r">14.87</td><td class="r up">+0.41%</td><td class="r up">+2.5%</td></tr><tr><td class="nm">TLT</td><td class="r">79.32</td><td class="r down">-2.38%</td><td class="r down">-8.9%</td></tr><tr><td class="nm">HYG</td><td class="r">77.86</td><td class="r down">-0.85%</td><td class="r down">-3.5%</td></tr></tbody></table></div>
   </section>
 
 </div>

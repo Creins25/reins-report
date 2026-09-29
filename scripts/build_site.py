@@ -377,6 +377,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 SCRIPT_V5 = r'''(function () {
   var PICKS = __PICKS_JSON__;
   var PRICE_ASOF = '__PRICE_ASOF__';
+  var BUILD_TIME = '__BUILD_TIME__';
   var SPY_BASE = __SPY_BASE__;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -445,10 +446,10 @@ SCRIPT_V5 = r'''(function () {
     var map = {
       live:     '<span class="live-pulse"></span><span style="color:#4ade80;font-weight:700">LIVE PRICES</span>',
       fetching: '<span style="color:rgba(255,255,255,.55)">⟳ Updating prices…</span>',
-      delayed:  '<span style="color:#fbbf24;font-weight:700">⚠️ DELAYED · feed unavailable</span>',
       closed:   '<span style="color:rgba(255,255,255,.32)">⚫ MARKET CLOSED</span>',
       eod:      '<span style="color:rgba(255,255,255,.5)">📊 End of Day Prices</span>',
-      stale:    '<span style="color:rgba(255,255,255,.5)">📊 Last Close</span>'
+      stale:    '<span style="color:rgba(255,255,255,.5)">📊 Last Close</span>',
+      hourly:   '<span style="color:rgba(255,255,255,.5)">📊 Prices refreshed hourly</span>'
     };
     el.innerHTML = map[state] || map.closed;
   }
@@ -687,8 +688,14 @@ SCRIPT_V5 = r'''(function () {
           if (ts) ts.textContent = PRICE_ASOF ? 'Close ' + PRICE_ASOF : 'Close';
           setIndicator('stale');
         } else {
-          // Market open but nothing came back: never imply LIVE.
-          setIndicator('delayed');
+          // Market open and the browser feed is unreachable. This is the
+          // normal case: the public CORS proxies now require API keys. The
+          // page is rebuilt by CI every hour through the session, so the
+          // prices on screen are hourly closes, not a broken feed. Say that
+          // rather than flashing a scary "feed unavailable" warning.
+          var ts2 = document.getElementById('live-ts');
+          if (ts2) ts2.textContent = BUILD_TIME ? 'Built ' + BUILD_TIME : 'Hourly';
+          setIndicator('hourly');
         }
         return;
       }
@@ -1796,8 +1803,14 @@ def build_site(week_str: str | None = None) -> Path:
         _asof = _bar.strftime('%b %d, %Y')
     except Exception:
         _asof = datetime.now().strftime('%b %d, %Y')
+    try:
+        from zoneinfo import ZoneInfo
+        _btime = datetime.now(ZoneInfo("America/New_York")).strftime('%b %d, %-I:%M %p ET')
+    except Exception:
+        _btime = datetime.now().strftime('%b %d, %H:%M')
     script_html = (SCRIPT_V5.replace('__PICKS_JSON__', picks_json)
-                            .replace('__PRICE_ASOF__', _asof))
+                            .replace('__PRICE_ASOF__', _asof)
+                            .replace('__BUILD_TIME__', _btime))
     script_html = script_html.replace('__SPY_BASE__', json.dumps(stats.get("spy_base_price") or 0))
 
     # Prose — fall back to auto-generated narrative if not written yet
