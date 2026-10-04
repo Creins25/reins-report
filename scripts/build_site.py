@@ -369,6 +369,17 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   .greeks-row      { flex-wrap:wrap; }
   .greek-cell      { flex:1 1 40%; }
 }
+
+/* Closed Positions: one line per trade. On phones, drop the Week and
+   Outcome columns so Ticker, Structure, Return and Account (the column that
+   foots to the realized total) all fit without a sideways scroll. */
+.closed-table th, .closed-table td { white-space:nowrap; }
+.closed-table .show-sm { display:none; }
+@media (max-width:560px) {
+  .closed-table .hide-sm, .closed-table .show-lg { display:none; }
+  .closed-table .show-sm { display:table-cell; }
+  .closed-table thead th, .closed-table tbody td { padding:9px 8px; }
+}
 """
 
 # ── Price updater v5 ──────────────────────────────────────────────────────────
@@ -1402,10 +1413,10 @@ def _build_closed_html(df) -> str:
     rows = df.to_dict("records")
     rows.sort(key=lambda r: str(r.get("date_closed") or ""), reverse=True)
 
-    html = ('<div class="table-wrap"><table>'
-            '<thead><tr><th>Ticker</th><th>Week</th><th>Structure</th>'
+    html = ('<div class="table-wrap closed-table"><table>'
+            '<thead><tr><th>Ticker</th><th class="hide-sm">Week</th><th>Structure</th>'
             '<th class="r">Return</th><th class="r">Account</th>'
-            '<th>Outcome</th></tr></thead><tbody>')
+            '<th class="hide-sm">Outcome</th></tr></thead><tbody>')
     total = 0.0
     for r in rows:
         try:    ret = float(r.get("realized_pnl_pct") or 0)
@@ -1442,14 +1453,15 @@ def _build_closed_html(df) -> str:
         outcome = ("Target hit"  if "target" in status else
                    "Stopped out" if "stop"   in status else "Closed")
         html += (f'<tr><td class="nm">{r.get("ticker","")}</td>'
-                 f'<td>{str(r.get("week_added","")).replace("2026-","")}</td>'
+                 f'<td class="hide-sm">{str(r.get("week_added","")).replace("2026-","")}</td>'
                  f'<td>{kind}</td>'
                  f'<td class="r {cls}">{ret:+.1f}%</td>'
                  f'<td class="r {cls}">{acct:+.2f}%</td>'
-                 f'<td>{outcome}</td></tr>')
+                 f'<td class="hide-sm">{outcome}</td></tr>')
     tcls = "gain" if total > 0 else ("loss" if total < 0 else "")
-    html += (f'<tr><td class="sh" colspan="4">Realized total</td>'
-             f'<td class="r sh {tcls}">{total:+.2f}%</td><td class="sh"></td></tr>')
+    html += (f'<tr><td class="sh show-lg" colspan="4">Realized total</td>'
+             f'<td class="sh show-sm" colspan="3">Realized total</td>'
+             f'<td class="r sh {tcls}">{total:+.2f}%</td><td class="sh hide-sm"></td></tr>')
     html += '</tbody></table></div>'
     html += ('<p style="color:var(--text-muted);font-size:9pt;font-style:italic;'
              'margin:8px 0 0 0;line-height:1.45">'
