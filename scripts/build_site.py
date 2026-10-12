@@ -467,7 +467,11 @@ SCRIPT_V5 = r'''(function () {
 
   function stampTime(eod) {
     var ts = document.getElementById('live-ts');
-    if (ts) ts.textContent = (eod ? 'Close ' : 'Updated ') + etTime(!eod) + ' ET';
+    // When the market is closed, the fetched price is the last close, so
+    // label it with that session's date rather than the current clock time.
+    if (ts) ts.textContent = eod
+      ? 'Close ' + (PRICE_ASOF || (etTime(false) + ' ET'))
+      : 'Updated ' + etTime(true) + ' ET';
     setIndicator(eod ? 'eod' : 'live');
   }
 
@@ -821,6 +825,17 @@ def _safe_f(v, decimals=3, fallback="n/a") -> str:
         return f"{float(v):.{decimals}f}"
     except Exception:
         return fallback
+
+
+
+def _et_today() -> date:
+    """Today's date in New York. The CI runner is on UTC, so date.today()
+    rolls over to tomorrow for any build after 8 PM Eastern."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("America/New_York")).date()
+    except Exception:
+        return date.today()
 
 
 def _fmt_iv(v, fallback="n/a") -> str:
@@ -1908,7 +1923,7 @@ def build_site(week_str: str | None = None) -> Path:
     </div>
     <div class="masthead-right">
       <div class="pub-week">{week_lbl}</div>
-      <div class="pub-date">{date_rng} · Updated {date.today().strftime('%b %d, %Y')}</div>
+      <div class="pub-date">{date_rng} · Updated {_et_today().strftime('%b %d, %Y')}</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
