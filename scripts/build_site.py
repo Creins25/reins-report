@@ -838,6 +838,15 @@ def _et_today() -> date:
         return date.today()
 
 
+def _px(v) -> str:
+    """Chart label: cents under $100 so nearby levels stay distinct (NCLH 15.57 vs 16.50)."""
+    try:
+        v = float(v)
+    except Exception:
+        return "n/a"
+    return f"${v:,.2f}" if abs(v) < 100 else f"${v:,.0f}"
+
+
 def _fmt_iv(v, fallback="n/a") -> str:
     """Format implied vol, tolerating both storage conventions in the ledger.
 
@@ -858,7 +867,7 @@ def _fmt_iv(v, fallback="n/a") -> str:
 # ── Sparkline chart ────────────────────────────────────────────────────────────
 
 def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
-                     is_option: bool = False) -> str:
+                     is_option: bool = False, credit: bool = False) -> str:
     """
     Generate an inline SVG price chart from 30-day yfinance history.
     Shows price line + entry (blue), stop (red dashed), target (green dashed) lines.
@@ -899,6 +908,18 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
     loss_color = "#b91c1c"
     line_color = "#0d1f35"
 
+    # Credit spreads have no stock-price target, only a defend level.
+    target_svg = "" if credit else (
+        f'<line x1="{PX}" y1="{target_y:.1f}" x2="{W-PX}" y2="{target_y:.1f}" '
+        f'stroke="{gain_color}" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>'
+        f'<text x="{W-PX+2}" y="{target_y:.1f}" dy="4" font-size="9" fill="{gain_color}" '
+        f'font-family="monospace" font-weight="700">{_px(target)}</text>')
+    stop_word = "Defend" if credit else "Stop"
+    target_legend = "" if credit else (
+        '<span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;'
+        'border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>'
+        f'Target {_px(target)}</span>')
+
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg"
      viewBox="0 0 {W} {H}" style="width:100%;height:100px;display:block;overflow:visible">
   <defs>
@@ -909,21 +930,17 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
   </defs>
   <!-- fill under curve -->
   <polygon points="{fill_pts}" fill="url(#fill-{ticker})"/>
-  <!-- Target line -->
-  <line x1="{PX}" y1="{target_y:.1f}" x2="{W-PX}" y2="{target_y:.1f}"
-        stroke="{gain_color}" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="{W-PX+2}" y="{target_y:.1f}" dy="4" font-size="9" fill="{gain_color}"
-        font-family="monospace" font-weight="700">${target:.0f}</text>
+  {target_svg}
   <!-- Entry line -->
   <line x1="{PX}" y1="{entry_y:.1f}" x2="{W-PX}" y2="{entry_y:.1f}"
         stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
   <text x="{W-PX+2}" y="{entry_y:.1f}" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">${entry:.0f}</text>
+        font-family="monospace">{_px(entry)}</text>
   <!-- Stop line -->
   <line x1="{PX}" y1="{stop_y:.1f}" x2="{W-PX}" y2="{stop_y:.1f}"
         stroke="{loss_color}" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
   <text x="{W-PX+2}" y="{stop_y:.1f}" dy="4" font-size="9" fill="{loss_color}"
-        font-family="monospace">${stop:.0f}</text>
+        font-family="monospace">{_px(stop)}</text>
   <!-- Price line -->
   <polyline points="{pts}" fill="none" stroke="{line_color}"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
@@ -936,9 +953,9 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
       <div class="chart-label">30-Day Price · {ticker}</div>
       <div class="chart-wrap">{svg}</div>
       <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target ${target:.0f}</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry ${entry:.0f}</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop ${stop:.0f}</span>
+        {target_legend}
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry {_px(entry)}</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>{stop_word} {_px(stop)}</span>
       </div>
     </div>"""
 
@@ -1307,7 +1324,32 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
         thesis      = str(row.get("thesis","")).strip()
         catalyst    = str(row.get("catalyst","")).strip()
         sector      = str(row.get("sector","")).strip()
-        horizon     = str(row.get("time_horizon","")).title()
+        horizon     = {"short": "Short-term", "medium": "Medium-term", "long": "Long-term"}.get(
+                          str(row.get("time_horizon","")).strip().lower(),
+                          str(row.get("time_horizon","")).title())
+        # Credit spreads: no stock target, so no R/R. Show the buyback target,
+        # the defend level (the short strike) and max gain vs max loss instead.
+        try:
+            _prem = float(row.get("premium_paid", 0) or 0)
+        except Exception:
+            _prem = 0.0
+        is_credit = _prem < 0
+        if is_credit:
+            conv_label, conv_cls = "Income", "b-moderate"
+            _cr = abs(_prem)
+            try:
+                _w = abs(float(row.get("short_strike")) - float(row.get("strike")))
+            except Exception:
+                _w = 0.0
+            m3_label, m3_val, m3_cls = "Buyback Target", f"${_cr/2:.2f}", "gain"
+            m4_label, m4_val, m4_cls = "Defend At", _safe(row.get("strike")), "loss"
+            progress_html = (f'<div class="pick-progress"><div class="progress-row" style="justify-content:center">'
+                             f'<span class="p-rr">Max gain ${_cr*100:,.0f} per spread · Max loss ${(_w-_cr)*100:,.0f}</span>'
+                             f'</div></div>')
+        else:
+            m3_label, m3_val, m3_cls = "Target", _safe(row['target_price']), "gain"
+            m4_label, m4_val, m4_cls = "Stop", _safe(row['stop_price']), "loss"
+            progress_html = None
         ticker      = str(row.get("ticker",""))
         pick_id     = str(row.get("pick_id","")).replace("-","")  # safe CSS id
 
@@ -1342,8 +1384,27 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
         entry  = float(row['entry_price'])
         stop   = float(row['stop_price'])
         target = float(row['target_price'])
-        chart_html = _build_sparkline(ticker, entry, stop, target,
-                                       is_option=(instrument in ('call','put')))
+        if is_credit:
+            try:
+                _defend = float(row.get("strike"))
+            except Exception:
+                _defend = stop
+            chart_html = _build_sparkline(ticker, entry, _defend, _defend,
+                                           is_option=True, credit=True)
+        else:
+            chart_html = _build_sparkline(ticker, entry, stop, target,
+                                           is_option=(instrument in ('call','put')))
+        if progress_html is None:
+            progress_html = f"""<div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">{_safe(row['stop_price'])} stop</span>
+                <span class="p-rr">{rr_str}</span>
+                <span class="p-target">{_safe(row['target_price'])} target</span>
+              </div>
+              <div class="progress-track">
+                <div id="pfill-{pick_id}" class="progress-fill {pnl_cls}" style="width:{pct:.1f}%"></div>
+              </div>
+            </div>"""
 
         html += f"""
         <div class="pick-card {direction}">
@@ -1372,25 +1433,16 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
                 </div>
               </div>
               <div class="metric">
-                <label>Target</label>
-                <div class="metric-val gain">{_safe(row['target_price'])}</div>
+                <label>{m3_label}</label>
+                <div class="metric-val {m3_cls}">{m3_val}</div>
               </div>
               <div class="metric">
-                <label>Stop</label>
-                <div class="metric-val loss">{_safe(row['stop_price'])}</div>
+                <label>{m4_label}</label>
+                <div class="metric-val {m4_cls}">{m4_val}</div>
               </div>
             </div>
 
-            <div class="pick-progress">
-              <div class="progress-row">
-                <span class="p-stop">{_safe(row['stop_price'])} stop</span>
-                <span class="p-rr">{rr_str}</span>
-                <span class="p-target">{_safe(row['target_price'])} target</span>
-              </div>
-              <div class="progress-track">
-                <div id="pfill-{pick_id}" class="progress-fill {pnl_cls}" style="width:{pct:.1f}%"></div>
-              </div>
-            </div>
+            {progress_html}
 
             {options_html}
 
@@ -1480,15 +1532,12 @@ def _build_closed_html(df) -> str:
     html += '</tbody></table></div>'
     html += ('<p style="color:var(--text-muted);font-size:9pt;font-style:italic;'
              'margin:8px 0 0 0;line-height:1.45">'
-             'Exits are marked at each trade\u2019s own rule level: exactly at the stop or '
-             'take-profit when the record shows it was reached, and at the trigger price when '
-             'a stock traded through a stated defend level (valued at the volatility implied '
-             'by the entry price). Otherwise a trade is marked at the 21-day force-close. '
-             'Trades closed by hand before any rule level, and the four first-week trades from '
-             'before the rules existed, keep their actual fills. Marks were standardized to this '
-             'basis on October 18, 2026, and weekly journal entries are left as written at the '
-             'time. This is a rules-based record of the signals, not a brokerage statement; '
-             'each trade\u2019s note shows its actual fill.</p>')
+             'Exits are marked at each trade\u2019s rule level: the stop or take-profit when it '
+             'was reached, the defend price when a stock crossed it, or otherwise the 21-day '
+             'force-close. Trades I closed by hand before any rule, and the four first-week '
+             'trades from before the rules, keep their actual fills. Marks were standardized on '
+             'October 18, 2026. This is a rules-based record, not a brokerage statement, and '
+             'each trade\u2019s note shows the actual fill.</p>')
     return html
 
 

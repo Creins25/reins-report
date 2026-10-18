@@ -364,9 +364,9 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "88c5c90b", "ticker": "LULU", "entry": 94.46, "direction": "short", "stop": 108.0, "target": 105.0, "instrument": "call", "entry_premium": 0.92, "premium": 0.92, "delta": -0.18, "gamma": -0.02, "build_premium": 1.05, "build_spot": 97.1, "pending": false, "account_risk_pct": 8.2, "strike": 105.0, "expiry": "2026-11-20", "is_credit": true, "short_strike": 110.0, "spread_kind": "bear_call", "pnl_weight": 1.849}, {"id": "0ffcf0fa", "ticker": "NCLH", "entry": 15.57, "direction": "short", "stop": 16.5, "target": 14.0, "instrument": "put", "entry_premium": 1.31, "premium": 1.31, "delta": -0.55, "gamma": 0.12, "build_premium": 1.57, "build_spot": 15.05, "pending": false, "account_risk_pct": 7.9, "strike": 16.0, "expiry": "2026-11-20", "pnl_weight": 7.9}, {"id": "d27b4a16", "ticker": "APH", "entry": 79.35, "direction": "short", "stop": 84.0, "target": 72.0, "instrument": "put", "entry_premium": 4.7, "premium": 4.7, "delta": -0.52, "gamma": 0.04, "build_premium": 4.7, "build_spot": 79.35, "pending": false, "account_risk_pct": 9.4, "strike": 80.0, "expiry": "2026-11-20", "pnl_weight": 9.4}];
+  var PICKS = [{"id": "88c5c90b", "ticker": "LULU", "entry": 94.46, "direction": "short", "stop": 105.0, "target": 105.0, "instrument": "call", "entry_premium": 0.92, "premium": 0.92, "delta": -0.18, "gamma": -0.02, "build_premium": 1.05, "build_spot": 97.1, "pending": false, "account_risk_pct": 8.2, "strike": 105.0, "expiry": "2026-11-20", "is_credit": true, "short_strike": 110.0, "spread_kind": "bear_call", "pnl_weight": 1.849}, {"id": "0ffcf0fa", "ticker": "NCLH", "entry": 15.57, "direction": "short", "stop": 16.5, "target": 14.0, "instrument": "put", "entry_premium": 1.31, "premium": 1.31, "delta": -0.55, "gamma": 0.12, "build_premium": 1.57, "build_spot": 15.05, "pending": false, "account_risk_pct": 7.9, "strike": 16.0, "expiry": "2026-11-20", "pnl_weight": 7.9}, {"id": "d27b4a16", "ticker": "APH", "entry": 79.35, "direction": "short", "stop": 84.0, "target": 72.0, "instrument": "put", "entry_premium": 4.7, "premium": 4.7, "delta": -0.52, "gamma": 0.04, "build_premium": 4.7, "build_spot": 79.35, "pending": false, "account_risk_pct": 9.4, "strike": 80.0, "expiry": "2026-11-20", "pnl_weight": 9.4}];
   var PRICE_ASOF = 'Oct 16, 2026';
-  var BUILD_TIME = 'Oct 18, 7:32 PM ET';
+  var BUILD_TIME = 'Oct 18, 7:42 PM ET';
   var SPY_BASE = 750.59;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -777,10 +777,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <div class="market-overview">
     <div class="overview-kicker">Market Structure · 2026-W43</div>
-    <div class="overview-theme">Tech broke on a hot CPI print and AI financing fears. The rotation into staples ran over my WMT call spread and the defend rule fired. I owe the record two bad passes, and took APH this time as a pre-earnings put.</div>
-    <div class="overview-body"><p>Tech broke. Chipmakers led a 7.7% drop in tech and the Nasdaq had its worst week since June, as a hot CPI print met growing worry about how the AI build-out is being financed. Headline inflation came in at 3.7% against 3.6% expected. The VIX jumped 35% to 20, oil hit $110, and the money ran to staples, energy and health care. The 10-year actually fell to 5.10%.</p>
-<p>That rotation broke my WMT call spread. WMT closed above my 115 strike on CPI day, my defend rule fired, and the next morning it gapped to $120. Marked at the $115 trigger, it is a $104 loss. The rule did its job. Last week's warning, that crowded defensive trades can rip in a rotation, played out in full.</p>
-<p>I also have to own two passes. I skipped APH two weeks ago over a bad printed strike and it has fallen 9% since, and I skipped HPE calls right before it dropped 25%. This week the model offered APH again with clean output, so I took one put, sized to Half-Kelly, and I will sell it the day before the October 28 earnings. LULU is down 14% and NCLH is up 20%.</p></div>
+    <div class="overview-theme">Tech broke on a hot CPI print and AI financing fears. The rotation into staples ran over my WMT call spread and the defend rule fired. Two of my recent passes were wrong, so I took APH this time as a pre-earnings put.</div>
+    <div class="overview-body"><p>Tech broke. Chipmakers led a 7.7% drop in tech and the Nasdaq had its worst week since June, as a hot CPI print met worries about how AI spending is being financed. Headline inflation came in at 3.7% against 3.6% expected. The VIX jumped 35% to 20, oil hit $110, and the money ran to staples, energy and health care. The 10-year actually fell to 5.10%.</p>
+<p>That rotation broke my WMT call spread. WMT closed above my 115 strike on CPI day, my defend rule fired, and the next morning it gapped to $120. Marked at the $115 trigger, it is a $104 loss. It is the second time a short call on a crowded trade has hurt me, after PLTR.</p>
+<p>I also have to own two passes. I skipped APH two weeks ago over a bad printed strike and it has fallen 9% since, and I skipped HPE calls right before it dropped 25%. This week the model offered APH again, so I bought one put and will sell it the day before the October 28 earnings. LULU is down 14% and NCLH is up 20%.</p></div>
   </div>
 
   <div class="about-panel">
@@ -816,12 +816,12 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
           <div class="pick-header">
             <div class="pick-title-group">
               <div class="pick-ticker">LULU</div>
-              <div class="pick-sub">Consumer Discretionary · Medium</div>
+              <div class="pick-sub">Consumer Discretionary · Medium-term</div>
             </div>
             <div class="pick-badges">
               <span class="badge b-short">SHORT</span>
               <span class="badge b-call">CALL</span>
-              <span class="badge b-spec">Speculative</span>
+              <span class="badge b-moderate">Income</span>
             </div>
           </div>
           <div class="pick-body">
@@ -838,25 +838,16 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
                 </div>
               </div>
               <div class="metric">
-                <label>Target</label>
-                <div class="metric-val gain">$105.00</div>
+                <label>Buyback Target</label>
+                <div class="metric-val gain">$0.46</div>
               </div>
               <div class="metric">
-                <label>Stop</label>
-                <div class="metric-val loss">$108.00</div>
+                <label>Defend At</label>
+                <div class="metric-val loss">$105.00</div>
               </div>
             </div>
 
-            <div class="pick-progress">
-              <div class="progress-row">
-                <span class="p-stop">$108.00 stop</span>
-                <span class="p-rr">R/R -0.8:1</span>
-                <span class="p-target">$105.00 target</span>
-              </div>
-              <div class="progress-track">
-                <div id="pfill-88c5c90b" class="progress-fill flat" style="width:0.0%"></div>
-              </div>
-            </div>
+            <div class="pick-progress"><div class="progress-row" style="justify-content:center"><span class="p-rr">Max gain $92 per spread · Max loss $408</span></div></div>
 
             
     <div class="options-block">
@@ -928,8 +919,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
               <span><strong>Entered:</strong> Oct 04, 2026</span>
             </div>
 
-            <div class="pick-thesis">Premium sell on a weak non-tech name, which is the one trade this week that passed every check. LULU is down 6.1% on the month and I am selling the 105 call 11.2% above it with a 79% probability of profit. Earnings are not until December 10, after expiry, so there is no report inside the trade. I passed on the two tech ideas from the same screen: HPE is up 34% in a month, and selling calls into a melt-up is exactly how PLTR broke.</div>
-            <div class="pick-catalyst">Discretionary is under pressure from 24-year-high yields and a cracking labor market. IV rank above 70 pays me to sell upside on a stock already in a downtrend.</div>
+            <div class="pick-thesis">A call spread on a weak, non-tech name. LULU was down 6% on the month, so I sold the 105 call 11% above the stock. Earnings are not until December 10, after expiry.</div>
+            <div class="pick-catalyst">Rising yields and a softer job market are weighing on retail. Options were expensive, so I got paid well to sell upside on a stock that was already falling.</div>
 
             
 
@@ -945,32 +936,28 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,56.5 32.3,42.0 50.7,61.5 69.0,77.4 87.4,65.7 105.7,58.2 124.1,69.0 142.4,82.4 160.8,63.3 179.1,70.8 197.4,52.6 215.8,39.0 234.1,47.1 252.5,50.7 270.8,52.6 289.2,56.6 307.5,77.4 325.9,81.3 344.2,83.1 362.6,91.0 380.9,98.4 399.2,95.7 417.6,105.4 435.9,100.9 454.3,90.7 472.6,89.8 491.0,91.6 509.3,93.0 527.7,65.0 546.0,76.2 546.0,108" fill="url(#fill-LULU)"/>
-  <!-- Target line -->
-  <line x1="14" y1="31.9" x2="546" y2="31.9"
-        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="31.9" dy="4" font-size="9" fill="#15803d"
-        font-family="monospace" font-weight="700">$105</text>
+  <polygon points="14.0,108 14.0,45.5 32.3,27.9 50.7,51.5 69.0,70.8 87.4,56.6 105.7,47.6 124.1,60.7 142.4,77.0 160.8,53.8 179.1,62.8 197.4,40.8 215.8,24.2 234.1,34.1 252.5,38.4 270.8,40.8 289.2,45.7 307.5,70.9 325.9,75.5 344.2,77.8 362.6,87.3 380.9,96.3 399.2,93.1 417.6,104.9 435.9,99.4 454.3,87.0 472.6,86.0 491.0,88.1 509.3,89.8 527.7,55.8 546.0,69.3 546.0,108" fill="url(#fill-LULU)"/>
+  
   <!-- Entry line -->
-  <line x1="14" y1="91.0" x2="546" y2="91.0"
+  <line x1="14" y1="87.3" x2="546" y2="87.3"
         stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-  <text x="548" y="91.0" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">$94</text>
+  <text x="548" y="87.3" dy="4" font-size="9" fill="#1d4ed8"
+        font-family="monospace">$94.46</text>
   <!-- Stop line -->
-  <line x1="14" y1="15.0" x2="546" y2="15.0"
+  <line x1="14" y1="15.6" x2="546" y2="15.6"
         stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="15.0" dy="4" font-size="9" fill="#b91c1c"
-        font-family="monospace">$108</text>
+  <text x="548" y="15.6" dy="4" font-size="9" fill="#b91c1c"
+        font-family="monospace">$105</text>
   <!-- Price line -->
-  <polyline points="14.0,56.5 32.3,42.0 50.7,61.5 69.0,77.4 87.4,65.7 105.7,58.2 124.1,69.0 142.4,82.4 160.8,63.3 179.1,70.8 197.4,52.6 215.8,39.0 234.1,47.1 252.5,50.7 270.8,52.6 289.2,56.6 307.5,77.4 325.9,81.3 344.2,83.1 362.6,91.0 380.9,98.4 399.2,95.7 417.6,105.4 435.9,100.9 454.3,90.7 472.6,89.8 491.0,91.6 509.3,93.0 527.7,65.0 546.0,76.2" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,45.5 32.3,27.9 50.7,51.5 69.0,70.8 87.4,56.6 105.7,47.6 124.1,60.7 142.4,77.0 160.8,53.8 179.1,62.8 197.4,40.8 215.8,24.2 234.1,34.1 252.5,38.4 270.8,40.8 289.2,45.7 307.5,70.9 325.9,75.5 344.2,77.8 362.6,87.3 380.9,96.3 399.2,93.1 417.6,104.9 435.9,99.4 454.3,87.0 472.6,86.0 491.0,88.1 509.3,89.8 527.7,55.8 546.0,69.3" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="76.2" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="69.3" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $105</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $94</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $108</span>
+        
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $94.46</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Defend $105</span>
       </div>
     </div>
           </div>
@@ -980,7 +967,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
           <div class="pick-header">
             <div class="pick-title-group">
               <div class="pick-ticker">NCLH</div>
-              <div class="pick-sub">Consumer Discretionary · Medium</div>
+              <div class="pick-sub">Consumer Discretionary · Medium-term</div>
             </div>
             <div class="pick-badges">
               <span class="badge b-short">SHORT</span>
@@ -1092,8 +1079,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
               <span><strong>Entered:</strong> Oct 11, 2026</span>
             </div>
 
-            <div class="pick-thesis">NCLH is the model's top-ranked short again: momentum at the 14th percentile, estimate revisions at the 9th, short interest confirming at the 19th. Put IV is cheap at the 11th percentile, so buying outright puts is reasonable, and execution is clean at a 4.6% spread. The tier rule wanted seven puts at 18.3% of the account. I took three, which is the system's own Half-Kelly size of 8%, because seven puts on a $15 stock would have swung the book about 7% for every $1 NCLH moves.</div>
-            <div class="pick-catalyst">Broken momentum and falling estimates in a levered consumer name, with CPI on Oct 14 and the FOMC on Oct 28 inside the hold. Earnings are Nov 4, after the Oct 30 force-close, so the position is out before the report.</div>
+            <div class="pick-thesis">NCLH is the model's top short again, with weak momentum and falling earnings estimates. Puts were cheap, so I bought them outright. The model wanted seven; I bought three, its own Half-Kelly size, so one stock could not swing the account too far.</div>
+            <div class="pick-catalyst">Earnings are November 4, after my October 30 exit, so I am out before the report.</div>
 
             
 
@@ -1110,21 +1097,17 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   </defs>
   <!-- fill under curve -->
   <polygon points="14.0,108 14.0,48.6 32.3,55.2 50.7,74.7 69.0,84.8 87.4,75.8 105.7,79.4 124.1,95.3 142.4,86.3 160.8,91.4 179.1,101.1 197.4,96.8 215.8,97.5 234.1,99.0 252.5,98.6 270.8,83.4 289.2,94.2 307.5,76.5 325.9,81.6 344.2,82.3 362.6,64.2 380.9,74.0 399.2,50.8 417.6,67.5 435.9,51.5 454.3,48.6 472.6,56.6 491.0,57.7 509.3,74.0 527.7,55.2 546.0,67.5 546.0,108" fill="url(#fill-NCLH)"/>
-  <!-- Target line -->
-  <line x1="14" y1="105.5" x2="546" y2="105.5"
-        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="105.5" dy="4" font-size="9" fill="#15803d"
-        font-family="monospace" font-weight="700">$14</text>
+  <line x1="14" y1="105.5" x2="546" y2="105.5" stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/><text x="548" y="105.5" dy="4" font-size="9" fill="#15803d" font-family="monospace" font-weight="700">$14.00</text>
   <!-- Entry line -->
   <line x1="14" y1="48.6" x2="546" y2="48.6"
         stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
   <text x="548" y="48.6" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">$16</text>
+        font-family="monospace">$15.57</text>
   <!-- Stop line -->
   <line x1="14" y1="15.0" x2="546" y2="15.0"
         stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
   <text x="548" y="15.0" dy="4" font-size="9" fill="#b91c1c"
-        font-family="monospace">$16</text>
+        font-family="monospace">$16.50</text>
   <!-- Price line -->
   <polyline points="14.0,48.6 32.3,55.2 50.7,74.7 69.0,84.8 87.4,75.8 105.7,79.4 124.1,95.3 142.4,86.3 160.8,91.4 179.1,101.1 197.4,96.8 215.8,97.5 234.1,99.0 252.5,98.6 270.8,83.4 289.2,94.2 307.5,76.5 325.9,81.6 344.2,82.3 362.6,64.2 380.9,74.0 399.2,50.8 417.6,67.5 435.9,51.5 454.3,48.6 472.6,56.6 491.0,57.7 509.3,74.0 527.7,55.2 546.0,67.5" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
@@ -1132,9 +1115,9 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <circle cx="546.0" cy="67.5" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $14</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $16</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $16</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $14.00</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $15.57</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $16.50</span>
       </div>
     </div>
           </div>
@@ -1144,7 +1127,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
           <div class="pick-header">
             <div class="pick-title-group">
               <div class="pick-ticker">APH</div>
-              <div class="pick-sub">Information Technology · Short</div>
+              <div class="pick-sub">Information Technology · Short-term</div>
             </div>
             <div class="pick-badges">
               <span class="badge b-short">SHORT</span>
@@ -1256,8 +1239,8 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
               <span><strong>Entered:</strong> Oct 18, 2026</span>
             </div>
 
-            <div class="pick-thesis">APH has been the model's top tech short for weeks: momentum at the 7th percentile, estimate revisions at the 28th, and insiders selling (the AI read was STRONG_SELL at 9/10). I passed on it two weeks ago because the printed strike did not exist, and it has fallen 9% since, so that pass cost a winner. The output is clean this time. Put IV is cheap at the 13th percentile ahead of the Oct 28 earnings, so this is a pre-earnings trade: buy now, sell the day before the report while IV is still elevated. Sized to Half-Kelly at one contract instead of the two the tier rule printed.</div>
-            <div class="pick-catalyst">Pre-earnings IV expansion into the Oct 28 report, broken momentum in a tech sector that just fell 7.7% in a week. Exit before the report so the position never carries the earnings gap or the IV crush.</div>
+            <div class="pick-thesis">APH has been the model's top tech short for weeks: weak momentum, falling estimates and insider selling. I passed two weeks ago and it fell 9%. Puts are cheap ahead of the October 28 earnings, so I bought one to sell the day before the report.</div>
+            <div class="pick-catalyst">Option prices usually rise into earnings. Selling the day before avoids the earnings gap and the drop in option prices that follows it.</div>
 
             
 
@@ -1274,21 +1257,17 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   </defs>
   <!-- fill under curve -->
   <polygon points="14.0,108 14.0,47.3 32.3,52.9 50.7,55.2 69.0,61.2 87.4,41.1 105.7,70.6 124.1,75.5 142.4,77.7 160.8,71.6 179.1,76.1 197.4,58.7 215.8,46.3 234.1,49.9 252.5,45.0 270.8,39.4 289.2,36.5 307.5,38.0 325.9,38.2 344.2,30.7 362.6,23.6 380.9,21.9 399.2,14.4 417.6,20.3 435.9,32.6 454.3,22.0 472.6,27.8 491.0,29.5 509.3,47.1 527.7,53.7 546.0,65.5 546.0,108" fill="url(#fill-APH)"/>
-  <!-- Target line -->
-  <line x1="14" y1="106.0" x2="546" y2="106.0"
-        stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="106.0" dy="4" font-size="9" fill="#15803d"
-        font-family="monospace" font-weight="700">$72</text>
+  <line x1="14" y1="106.0" x2="546" y2="106.0" stroke="#15803d" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/><text x="548" y="106.0" dy="4" font-size="9" fill="#15803d" font-family="monospace" font-weight="700">$72.00</text>
   <!-- Entry line -->
   <line x1="14" y1="65.5" x2="546" y2="65.5"
         stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
   <text x="548" y="65.5" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">$79</text>
+        font-family="monospace">$79.35</text>
   <!-- Stop line -->
   <line x1="14" y1="39.9" x2="546" y2="39.9"
         stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
   <text x="548" y="39.9" dy="4" font-size="9" fill="#b91c1c"
-        font-family="monospace">$84</text>
+        font-family="monospace">$84.00</text>
   <!-- Price line -->
   <polyline points="14.0,47.3 32.3,52.9 50.7,55.2 69.0,61.2 87.4,41.1 105.7,70.6 124.1,75.5 142.4,77.7 160.8,71.6 179.1,76.1 197.4,58.7 215.8,46.3 234.1,49.9 252.5,45.0 270.8,39.4 289.2,36.5 307.5,38.0 325.9,38.2 344.2,30.7 362.6,23.6 380.9,21.9 399.2,14.4 417.6,20.3 435.9,32.6 454.3,22.0 472.6,27.8 491.0,29.5 509.3,47.1 527.7,53.7 546.0,65.5" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
@@ -1296,9 +1275,9 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <circle cx="546.0" cy="65.5" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $72</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $79</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $84</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>Target $72.00</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $79.35</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>Stop $84.00</span>
       </div>
     </div>
           </div>
@@ -1308,7 +1287,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">🗂 Closed Positions</div>
-    <div class="table-wrap closed-table"><table><thead><tr><th>Ticker</th><th class="hide-sm">Week</th><th>Structure</th><th class="r">Return</th><th class="r">Account</th><th class="hide-sm">Outcome</th></tr></thead><tbody><tr><td class="nm">WMT</td><td class="hide-sm">W39</td><td>bear call</td><td class="r loss">-104.0%</td><td class="r loss">-2.08%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">ZTS</td><td class="hide-sm">W35</td><td>bear put</td><td class="r gain">+82.1%</td><td class="r gain">+6.73%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">NCLH</td><td class="hide-sm">W37</td><td>bear put</td><td class="r gain">+44.3%</td><td class="r gain">+8.82%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">PLTR</td><td class="hide-sm">W38</td><td>bear call</td><td class="r loss">-128.1%</td><td class="r loss">-2.47%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">NRG</td><td class="hide-sm">W38</td><td>bear call</td><td class="r gain">+50.0%</td><td class="r gain">+0.86%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">FCX</td><td class="hide-sm">W35</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-3.80%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">TGT</td><td class="hide-sm">W37</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-4.75%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W32</td><td>bull call</td><td class="r gain">+15.2%</td><td class="r gain">+1.15%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">BLDR</td><td class="hide-sm">W32</td><td>bear put</td><td class="r loss">-50.0%</td><td class="r loss">-2.30%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">COIN</td><td class="hide-sm">W27</td><td>bear put</td><td class="r gain">+0.4%</td><td class="r gain">+0.06%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">CSCO</td><td class="hide-sm">W27</td><td>bear call</td><td class="r gain">+12.0%</td><td class="r gain">+0.20%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">HPE</td><td class="hide-sm">W27</td><td>bear call</td><td class="r loss">-87.1%</td><td class="r loss">-1.76%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W30</td><td>long put</td><td class="r loss">-49.8%</td><td class="r loss">-2.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">BX</td><td class="hide-sm">W25</td><td>bear put</td><td class="r gain">+55.9%</td><td class="r gain">+5.92%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W25</td><td>bear call</td><td class="r gain">+39.6%</td><td class="r gain">+0.38%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">CLX</td><td class="hide-sm">W23</td><td>bear put</td><td class="r loss">-49.8%</td><td class="r loss">-3.14%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">MO</td><td class="hide-sm">W23</td><td>bear call</td><td class="r loss">-38.3%</td><td class="r loss">-0.72%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W23</td><td>bull call</td><td class="r gain">+50.3%</td><td class="r gain">+5.83%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">AMZN</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+3.6%</td><td class="r gain">+0.05%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">JPM</td><td class="hide-sm">W22</td><td>equity</td><td class="r loss">-2.3%</td><td class="r loss">-0.03%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">NVDA</td><td class="hide-sm">W22</td><td>long call</td><td class="r loss">-44.3%</td><td class="r loss">-0.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">META</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+49.6%</td><td class="r gain">+0.99%</td><td class="hide-sm">Target hit</td></tr><tr><td class="sh show-lg" colspan="4">Realized total</td><td class="sh show-sm" colspan="3">Realized total</td><td class="r sh gain">+6.17%</td><td class="sh hide-sm"></td></tr></tbody></table></div><p style="color:var(--text-muted);font-size:9pt;font-style:italic;margin:8px 0 0 0;line-height:1.45">Exits are marked at each trade’s own rule level: exactly at the stop or take-profit when the record shows it was reached, and at the trigger price when a stock traded through a stated defend level (valued at the volatility implied by the entry price). Otherwise a trade is marked at the 21-day force-close. Trades closed by hand before any rule level, and the four first-week trades from before the rules existed, keep their actual fills. Marks were standardized to this basis on October 18, 2026, and weekly journal entries are left as written at the time. This is a rules-based record of the signals, not a brokerage statement; each trade’s note shows its actual fill.</p>
+    <div class="table-wrap closed-table"><table><thead><tr><th>Ticker</th><th class="hide-sm">Week</th><th>Structure</th><th class="r">Return</th><th class="r">Account</th><th class="hide-sm">Outcome</th></tr></thead><tbody><tr><td class="nm">WMT</td><td class="hide-sm">W39</td><td>bear call</td><td class="r loss">-104.0%</td><td class="r loss">-2.08%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">ZTS</td><td class="hide-sm">W35</td><td>bear put</td><td class="r gain">+82.1%</td><td class="r gain">+6.73%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">NCLH</td><td class="hide-sm">W37</td><td>bear put</td><td class="r gain">+44.3%</td><td class="r gain">+8.82%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">PLTR</td><td class="hide-sm">W38</td><td>bear call</td><td class="r loss">-128.1%</td><td class="r loss">-2.47%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">NRG</td><td class="hide-sm">W38</td><td>bear call</td><td class="r gain">+50.0%</td><td class="r gain">+0.86%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">FCX</td><td class="hide-sm">W35</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-3.80%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">TGT</td><td class="hide-sm">W37</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-4.75%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W32</td><td>bull call</td><td class="r gain">+15.2%</td><td class="r gain">+1.15%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">BLDR</td><td class="hide-sm">W32</td><td>bear put</td><td class="r loss">-50.0%</td><td class="r loss">-2.30%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">COIN</td><td class="hide-sm">W27</td><td>bear put</td><td class="r gain">+0.4%</td><td class="r gain">+0.06%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">CSCO</td><td class="hide-sm">W27</td><td>bear call</td><td class="r gain">+12.0%</td><td class="r gain">+0.20%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W30</td><td>long put</td><td class="r loss">-49.8%</td><td class="r loss">-2.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">HPE</td><td class="hide-sm">W27</td><td>bear call</td><td class="r loss">-87.1%</td><td class="r loss">-1.76%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">BX</td><td class="hide-sm">W25</td><td>bear put</td><td class="r gain">+55.9%</td><td class="r gain">+5.92%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W25</td><td>bear call</td><td class="r gain">+39.6%</td><td class="r gain">+0.38%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">CLX</td><td class="hide-sm">W23</td><td>bear put</td><td class="r loss">-49.8%</td><td class="r loss">-3.14%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">MO</td><td class="hide-sm">W23</td><td>bear call</td><td class="r loss">-38.3%</td><td class="r loss">-0.72%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W23</td><td>bull call</td><td class="r gain">+50.3%</td><td class="r gain">+5.83%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">AMZN</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+3.6%</td><td class="r gain">+0.05%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">JPM</td><td class="hide-sm">W22</td><td>equity</td><td class="r loss">-2.3%</td><td class="r loss">-0.03%</td><td class="hide-sm">Closed</td></tr><tr><td class="nm">NVDA</td><td class="hide-sm">W22</td><td>long call</td><td class="r loss">-44.3%</td><td class="r loss">-0.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">META</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+49.6%</td><td class="r gain">+0.99%</td><td class="hide-sm">Target hit</td></tr><tr><td class="sh show-lg" colspan="4">Realized total</td><td class="sh show-sm" colspan="3">Realized total</td><td class="r sh gain">+6.17%</td><td class="sh hide-sm"></td></tr></tbody></table></div><p style="color:var(--text-muted);font-size:9pt;font-style:italic;margin:8px 0 0 0;line-height:1.45">Exits are marked at each trade’s rule level: the stop or take-profit when it was reached, the defend price when a stock crossed it, or otherwise the 21-day force-close. Trades I closed by hand before any rule, and the four first-week trades from before the rules, keep their actual fills. Marks were standardized on October 18, 2026. This is a rules-based record, not a brokerage statement, and each trade’s note shows the actual fill.</p>
   </section>
 
   <section>
