@@ -1480,10 +1480,15 @@ def _build_closed_html(df) -> str:
     html += '</tbody></table></div>'
     html += ('<p style="color:var(--text-muted);font-size:9pt;font-style:italic;'
              'margin:8px 0 0 0;line-height:1.45">'
-             'Exits are marked at the strategy\u2019s own rule levels, meaning the 21-day '
-             'force-close, the stop, or the take-profit, priced at that session\u2019s market. '
-             'This is a rules-based record of the signals, not a brokerage statement. '
-             'Where a fill differed in practice, the note on that trade says so.</p>')
+             'Exits are marked at each trade\u2019s own rule level: exactly at the stop or '
+             'take-profit when the record shows it was reached, and at the trigger price when '
+             'a stock traded through a stated defend level (valued at the volatility implied '
+             'by the entry price). Otherwise a trade is marked at the 21-day force-close. '
+             'Trades closed by hand before any rule level, and the four first-week trades from '
+             'before the rules existed, keep their actual fills. Marks were standardized to this '
+             'basis on October 18, 2026, and weekly journal entries are left as written at the '
+             'time. This is a rules-based record of the signals, not a brokerage statement; '
+             'each trade\u2019s note shows its actual fill.</p>')
     return html
 
 
