@@ -1999,7 +1999,7 @@ def build_site(week_str: str | None = None) -> Path:
   <div class="about-panel">
     <div class="about-avatar">CR</div>
     <div class="about-body">
-      <div class="about-name">Carter Reins, Aspiring Fund Manager</div>
+      <div class="about-name">Carter Reins, Aspiring Trader</div>
       <div class="about-desc">
         Finance student and full time market obsessive. I run a systematic long/short options
         strategy: a model ranks the S&amp;P 500 on eight factors, a volatility read picks the
@@ -2008,7 +2008,7 @@ def build_site(week_str: str | None = None) -> Path:
         I grade every call against the S&amp;P 500. That's the whole game.
       </div>
       <div class="about-tags">
-        <span class="about-tag">3 Yrs Trading</span>
+        <span class="about-tag">Trading Since High School</span>
         <span class="about-tag">Systematic L/S</span>
         <span class="about-tag">Defined Risk Options</span>
         <span class="about-tag">Conviction Sizing</span>
