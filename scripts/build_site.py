@@ -867,7 +867,7 @@ def _fmt_iv(v, fallback="n/a") -> str:
 # ── Sparkline chart ────────────────────────────────────────────────────────────
 
 def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
-                     is_option: bool = False, credit: bool = False) -> str:
+                     is_option: bool = False, credit: bool = False, breakeven: bool = False) -> str:
     """
     Generate an inline SVG price chart from 30-day yfinance history.
     Shows price line + entry (blue), stop (red dashed), target (green dashed) lines.
@@ -909,13 +909,14 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
     line_color = "#0d1f35"
 
     # Credit spreads have no stock-price target, only a defend level.
-    target_svg = "" if credit else (
+    target_svg = "" if (credit or breakeven) else (
         f'<line x1="{PX}" y1="{target_y:.1f}" x2="{W-PX}" y2="{target_y:.1f}" '
         f'stroke="{gain_color}" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>'
         f'<text x="{W-PX+2}" y="{target_y:.1f}" dy="4" font-size="9" fill="{gain_color}" '
         f'font-family="monospace" font-weight="700">{_px(target)}</text>')
-    stop_word = "Defend" if credit else "Stop"
-    target_legend = "" if credit else (
+    stop_word = "Defend" if credit else ("Break-even" if breakeven else "Stop")
+    stop_color = "#6b6b6b" if breakeven else loss_color
+    target_legend = "" if (credit or breakeven) else (
         '<span class="legend-item"><span class="legend-dot" style="background:#15803d;height:2px;'
         'border-top:1px dashed #15803d;background:none;border-color:#15803d"></span>'
         f'Target {_px(target)}</span>')
@@ -938,8 +939,8 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
         font-family="monospace">{_px(entry)}</text>
   <!-- Stop line -->
   <line x1="{PX}" y1="{stop_y:.1f}" x2="{W-PX}" y2="{stop_y:.1f}"
-        stroke="{loss_color}" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="{W-PX+2}" y="{stop_y:.1f}" dy="4" font-size="9" fill="{loss_color}"
+        stroke="{stop_color}" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
+  <text x="{W-PX+2}" y="{stop_y:.1f}" dy="4" font-size="9" fill="{stop_color}"
         font-family="monospace">{_px(stop)}</text>
   <!-- Price line -->
   <polyline points="{pts}" fill="none" stroke="{line_color}"
@@ -955,7 +956,7 @@ def _build_sparkline(ticker: str, entry: float, stop: float, target: float,
       <div class="chart-legend">
         {target_legend}
         <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry {_px(entry)}</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #b91c1c;background:none"></span>{stop_word} {_px(stop)}</span>
+        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed {stop_color};background:none"></span>{stop_word} {_px(stop)}</span>
       </div>
     </div>"""
 
@@ -1214,6 +1215,10 @@ def _build_options_block(row) -> str:
 
     vega_cls = 'neg' if str(vega).startswith('-') else 'pos'
     vega_disp = vega if str(vega).startswith('-') else f"+{vega}"
+    if is_credit:
+        lev_label, lev_val = "Max Gain", f"{premium}/share"
+    else:
+        lev_label, lev_val = "Leverage", f"{leverage}×"
 
     try:
         theta_val = float(row.get('theta_daily',0))
@@ -1256,8 +1261,8 @@ def _build_options_block(row) -> str:
           <div class="opt-val">{iv_pct}</div>
         </div>
         <div class="opt-item">
-          <label>Leverage</label>
-          <div class="opt-val purple">{leverage}×</div>
+          <label>{lev_label}</label>
+          <div class="opt-val purple">{lev_val}</div>
         </div>
         <div class="opt-item">
           <label>Max Loss</label>
@@ -1346,6 +1351,33 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
             progress_html = (f'<div class="pick-progress"><div class="progress-row" style="justify-content:center">'
                              f'<span class="p-rr">Max gain ${_cr*100:,.0f} per spread · Max loss ${(_w-_cr)*100:,.0f}</span>'
                              f'</div></div>')
+        elif instrument in ("call", "put") and _prem > 0:
+            # Real exit rules are on the option price: stop at -50% of the debit,
+            # take profit at 2x for an outright option or 75% of max for a spread.
+            try:
+                _w = abs(float(row.get("short_strike")) - float(row.get("strike")))
+            except Exception:
+                _w = 0.0
+            _tp   = _prem + 0.75 * (_w - _prem) if _w > _prem else 2 * _prem
+            _stop = _prem / 2
+            try:
+                _cur = _prem * (1 + float(pnl) / 100)
+            except Exception:
+                _cur = _prem
+            _rr  = (_tp - _prem) / (_prem - _stop)
+            _bar = max(0.0, min(100.0, (_cur - _stop) / (_tp - _stop) * 100))
+            m3_label, m3_val, m3_cls = "Take Profit (Option)", f"${_tp:.2f}", "gain"
+            m4_label, m4_val, m4_cls = "Stop (Option)", f"${_stop:.2f}", "loss"
+            progress_html = f"""<div class="pick-progress">
+              <div class="progress-row">
+                <span class="p-stop">${_stop:.2f} stop</span>
+                <span class="p-rr">R/R {_rr:.1f}:1</span>
+                <span class="p-target">${_tp:.2f} take profit</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill {pnl_cls}" style="width:{_bar:.1f}%"></div>
+              </div>
+            </div>"""
         else:
             m3_label, m3_val, m3_cls = "Target", _safe(row['target_price']), "gain"
             m4_label, m4_val, m4_cls = "Stop", _safe(row['stop_price']), "loss"
@@ -1391,6 +1423,12 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
                 _defend = stop
             chart_html = _build_sparkline(ticker, entry, _defend, _defend,
                                            is_option=True, credit=True)
+        elif instrument in ("call", "put") and _prem > 0:
+            try:
+                _be = float(row.get("break_even"))
+            except Exception:
+                _be = entry
+            chart_html = _build_sparkline(ticker, entry, _be, _be, is_option=True, breakeven=True)
         else:
             chart_html = _build_sparkline(ticker, entry, stop, target,
                                            is_option=(instrument in ('call','put')))
@@ -1517,8 +1555,10 @@ def _build_closed_html(df) -> str:
         if kind in ("call", "put"):
             kind = "long " + kind
         status = str(r.get("status") or "")
-        outcome = ("Target hit"  if "target" in status else
-                   "Stopped out" if "stop"   in status else "Closed")
+        outcome = ("Target hit"     if "target" in status else
+                   "Stopped out"    if "stop"   in status else
+                   "21-day close"   if "force"  in status else
+                   "Closed by hand" if "hand"   in status else "Closed")
         html += (f'<tr><td class="nm">{r.get("ticker","")}</td>'
                  f'<td class="hide-sm">{str(r.get("week_added","")).replace("2026-","")}</td>'
                  f'<td>{kind}</td>'
