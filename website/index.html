@@ -364,9 +364,9 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "88c5c90b", "ticker": "LULU", "entry": 94.46, "direction": "short", "stop": 105.0, "target": 105.0, "instrument": "call", "entry_premium": 0.92, "premium": 0.92, "delta": -0.091, "gamma": -0.0042, "build_premium": 1.145, "build_spot": 99.01, "pending": false, "account_risk_pct": 8.2, "strike": 105.0, "expiry": "2026-11-20", "is_credit": true, "short_strike": 110.0, "spread_kind": "bear_call", "pnl_weight": 1.849}, {"id": "0ffcf0fa", "ticker": "NCLH", "entry": 15.57, "direction": "short", "stop": 16.5, "target": 14.0, "instrument": "put", "entry_premium": 1.31, "premium": 1.31, "delta": -0.52, "gamma": 0.1506, "build_premium": 1.51, "build_spot": 15.1, "pending": false, "account_risk_pct": 7.9, "strike": 16.0, "expiry": "2026-11-20", "pnl_weight": 7.9}, {"id": "d27b4a16", "ticker": "APH", "entry": 79.35, "direction": "short", "stop": 84.0, "target": 72.0, "instrument": "put", "entry_premium": 4.7, "premium": 4.7, "delta": -0.486, "gamma": 0.0361, "build_premium": 8.2, "build_spot": 74.09, "pending": false, "account_risk_pct": 9.4, "strike": 80.0, "expiry": "2026-11-20", "pnl_weight": 9.4}];
+  var PICKS = [{"id": "88c5c90b", "ticker": "LULU", "entry": 94.46, "direction": "short", "stop": 105.0, "target": 105.0, "instrument": "call", "entry_premium": 0.92, "premium": 0.92, "delta": -0.091, "gamma": -0.0042, "build_premium": 1.145, "build_spot": 99.01, "pending": false, "account_risk_pct": 8.2, "strike": 105.0, "expiry": "2026-11-20", "is_credit": true, "short_strike": 110.0, "spread_kind": "bear_call", "pnl_weight": 1.849}, {"id": "0ffcf0fa", "ticker": "NCLH", "entry": 15.57, "direction": "short", "stop": 16.5, "target": 14.0, "instrument": "put", "entry_premium": 1.31, "premium": 1.31, "delta": -0.52, "gamma": 0.1506, "build_premium": 1.51, "build_spot": 15.1, "pending": false, "account_risk_pct": 7.9, "strike": 16.0, "expiry": "2026-11-20", "pnl_weight": 7.9}];
   var PRICE_ASOF = 'Oct 23, 2026';
-  var BUILD_TIME = 'Oct 23, 7:38 PM ET';
+  var BUILD_TIME = 'Oct 25, 7:23 PM ET';
   var SPY_BASE = 750.59;   // SPY price at track-record inception (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -762,7 +762,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </div>
     <div class="masthead-right">
       <div class="pub-week">2026-W43</div>
-      <div class="pub-date">October 19 to October 25, 2026 · Updated Oct 23, 2026</div>
+      <div class="pub-date">October 19 to October 25, 2026 · Updated Oct 25, 2026</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
@@ -806,7 +806,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">25</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">3</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">22</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="6.1746">+6.17%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val gain" id="spy-return-val">+1.25%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="1.2497">+4.92%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">25</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">2</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">23</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="15.5746">+15.57%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val gain" id="spy-return-val">+1.25%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="1.2497">+14.32%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
   </section>
 
   <section>
@@ -914,7 +914,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
             <div class="pick-sizing-row">
               <span><strong>Position size:</strong> <span class="size-pill">8.2% of account</span></span>
-              <span><strong>Days held:</strong> 19d</span>
+              <span><strong>Days held:</strong> 21d</span>
               <span><strong>Instrument:</strong> Call</span>
               <span><strong>Entered:</strong> Oct 04, 2026</span>
             </div>
@@ -1074,13 +1074,13 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
             <div class="pick-sizing-row">
               <span><strong>Position size:</strong> <span class="size-pill">7.9% of account</span></span>
-              <span><strong>Days held:</strong> 12d</span>
+              <span><strong>Days held:</strong> 14d</span>
               <span><strong>Instrument:</strong> Put</span>
               <span><strong>Entered:</strong> Oct 11, 2026</span>
             </div>
 
             <div class="pick-thesis">NCLH is the model's top short again, with weak momentum and falling earnings estimates. Puts were cheap, so I bought them outright. The model wanted seven; I bought three, its own Half-Kelly size, so one stock could not swing the account too far.</div>
-            <div class="pick-catalyst">Earnings are November 4, after my October 30 exit, so I am out before the report.</div>
+            <div class="pick-catalyst">NCLH moved its earnings up to October 29, so I sell on October 28, the day before the report.</div>
 
             
 
@@ -1122,172 +1122,12 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </div>
           </div>
         </div>
-        
-        <div class="pick-card short">
-          <div class="pick-header">
-            <div class="pick-title-group">
-              <div class="pick-ticker">APH</div>
-              <div class="pick-sub">Information Technology · Short-term</div>
-            </div>
-            <div class="pick-badges">
-              <span class="badge b-short">SHORT</span>
-              <span class="badge b-put">PUT</span>
-              <span class="badge b-above">Strong</span>
-            </div>
-          </div>
-          <div class="pick-body">
-            <div class="pick-metrics">
-              <div class="metric">
-                <label>Entry (Underlying)</label>
-                <div class="metric-val">$79.35</div>
-              </div>
-              <div class="metric">
-                <label>Current &amp; P&amp;L</label>
-                <div id="cp-wrap-d27b4a16" class="metric-val flat">
-                  <span id="cp-d27b4a16">$79.35</span>
-                  <span id="pnl-d27b4a16" class="pnl-pill flat">+0.0%</span>
-                </div>
-              </div>
-              <div class="metric">
-                <label>Take Profit (Option)</label>
-                <div class="metric-val gain">$9.40</div>
-              </div>
-              <div class="metric">
-                <label>Stop (Option)</label>
-                <div class="metric-val loss">$2.35</div>
-              </div>
-            </div>
-
-            <div class="pick-progress">
-              <div class="progress-row">
-                <span class="p-stop">$2.35 stop</span>
-                <span class="p-rr">R/R 2.0:1</span>
-                <span class="p-target">$9.40 take profit</span>
-              </div>
-              <div class="progress-track">
-                <div class="progress-fill flat" style="width:33.3%"></div>
-              </div>
-            </div>
-
-            
-    <div class="options-block">
-      <div class="options-title">PUT Option Details · Max Loss = Premium Paid</div>
-      <div class="options-row">
-        <div class="opt-item">
-          <label>Strike</label>
-          <div class="opt-val purple">$80.00</div>
-        </div>
-        <div class="opt-item">
-          <label>Expiry</label>
-          <div class="opt-val">2026-11-20</div>
-        </div>
-        <div class="opt-item">
-          <label>Premium Paid</label>
-          <div class="opt-val purple">$4.70/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Break-Even at Expiry</label>
-          <div class="opt-val">$75.30</div>
-        </div>
-      </div>
-      <div class="options-row" style="margin-bottom:12px">
-        <div class="opt-item">
-          <label>IV Used</label>
-          <div class="opt-val">47.0%</div>
-        </div>
-        <div class="opt-item">
-          <label>Leverage</label>
-          <div class="opt-val purple">16.9×</div>
-        </div>
-        <div class="opt-item">
-          <label>Max Loss</label>
-          <div class="opt-val loss">$4.70/share</div>
-        </div>
-        <div class="opt-item">
-          <label>Contract = 100 shares</label>
-          <div class="opt-val">×100</div>
-        </div>
-      </div>
-      <div class="greeks-row">
-        <div class="greek-cell">
-          <span class="greek-name">Delta</span>
-          <span class="greek-sym">Δ</span>
-          <div class="greek-val neg">-0.486</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Gamma</span>
-          <span class="greek-sym">Γ</span>
-          <div class="greek-val">0.0361</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Theta / day</span>
-          <span class="greek-sym">Θ</span>
-          <div class="greek-val neg">-0.064</div>
-        </div>
-        <div class="greek-cell">
-          <span class="greek-name">Vega / 1% IV</span>
-          <span class="greek-sym">ν</span>
-          <div class="greek-val pos">+0.094</div>
-        </div>
-      </div>
-    </div>
-
-            <div class="pick-sizing-row">
-              <span><strong>Position size:</strong> <span class="size-pill">9.4% of account</span></span>
-              <span><strong>Days held:</strong> 5d</span>
-              <span><strong>Instrument:</strong> Put</span>
-              <span><strong>Entered:</strong> Oct 18, 2026</span>
-            </div>
-
-            <div class="pick-thesis">APH has been the model's top tech short for weeks: weak momentum, falling estimates and insider selling. I passed two weeks ago and it fell 9%. Puts are cheap ahead of the October 28 earnings, so I bought one to sell the day before the report.</div>
-            <div class="pick-catalyst">Option prices usually rise into earnings. Selling the day before avoids the earnings gap and the drop in option prices that follows it.</div>
-
-            
-
-            
-    <div class="pick-chart">
-      <div class="chart-label">30-Day Price · APH</div>
-      <div class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 560 120" style="width:100%;height:100px;display:block;overflow:visible">
-  <defs>
-    <linearGradient id="fill-APH" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0d1f35" stop-opacity="0.07"/>
-      <stop offset="100%" stop-color="#0d1f35" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,74.4 32.3,79.7 50.7,82.0 69.0,75.5 87.4,80.3 105.7,61.7 124.1,48.5 142.4,52.3 160.8,47.1 179.1,41.2 197.4,38.1 215.8,39.7 234.1,40.0 252.5,31.9 270.8,24.3 289.2,22.5 307.5,14.6 325.9,20.9 344.2,34.0 362.6,22.7 380.9,28.9 399.2,30.6 417.6,49.4 435.9,56.4 454.3,69.0 472.6,63.5 491.0,69.2 509.3,69.9 527.7,105.9 546.0,99.9 546.0,108" fill="url(#fill-APH)"/>
-  
-  <!-- Entry line -->
-  <line x1="14" y1="69.0" x2="546" y2="69.0"
-        stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-  <text x="548" y="69.0" dy="4" font-size="9" fill="#1d4ed8"
-        font-family="monospace">$79.35</text>
-  <!-- Stop line -->
-  <line x1="14" y1="92.8" x2="546" y2="92.8"
-        stroke="#6b6b6b" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="92.8" dy="4" font-size="9" fill="#6b6b6b"
-        font-family="monospace">$75.30</text>
-  <!-- Price line -->
-  <polyline points="14.0,74.4 32.3,79.7 50.7,82.0 69.0,75.5 87.4,80.3 105.7,61.7 124.1,48.5 142.4,52.3 160.8,47.1 179.1,41.2 197.4,38.1 215.8,39.7 234.1,40.0 252.5,31.9 270.8,24.3 289.2,22.5 307.5,14.6 325.9,20.9 344.2,34.0 362.6,22.7 380.9,28.9 399.2,30.6 417.6,49.4 435.9,56.4 454.3,69.0 472.6,63.5 491.0,69.2 509.3,69.9 527.7,105.9 546.0,99.9" fill="none" stroke="#0d1f35"
-            stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- Last price dot -->
-  <circle cx="546.0" cy="99.9" r="3.5" fill="#0d1f35"/>
-</svg></div>
-      <div class="chart-legend">
-        
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #1d4ed8;background:none"></span>Entry $79.35</span>
-        <span class="legend-item"><span class="legend-dot" style="border-top:1px dashed #6b6b6b;background:none"></span>Break-even $75.30</span>
-      </div>
-    </div>
-          </div>
-        </div>
         </div>
   </section>
 
   <section>
     <div class="section-label">🗂 Closed Positions</div>
-    <div class="table-wrap closed-table"><table><thead><tr><th>Ticker</th><th class="hide-sm">Week</th><th>Structure</th><th class="r">Return</th><th class="r">Account</th><th class="hide-sm">Outcome</th></tr></thead><tbody><tr><td class="nm">WMT</td><td class="hide-sm">W39</td><td>bear call</td><td class="r loss">-104.0%</td><td class="r loss">-2.08%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">ZTS</td><td class="hide-sm">W35</td><td>bear put</td><td class="r gain">+82.1%</td><td class="r gain">+6.73%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">NCLH</td><td class="hide-sm">W37</td><td>bear put</td><td class="r gain">+44.3%</td><td class="r gain">+8.82%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">PLTR</td><td class="hide-sm">W38</td><td>bear call</td><td class="r loss">-128.1%</td><td class="r loss">-2.47%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">NRG</td><td class="hide-sm">W38</td><td>bear call</td><td class="r gain">+50.0%</td><td class="r gain">+0.86%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">FCX</td><td class="hide-sm">W35</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-3.80%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">TGT</td><td class="hide-sm">W37</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-4.75%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W32</td><td>bull call</td><td class="r gain">+15.2%</td><td class="r gain">+1.15%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">BLDR</td><td class="hide-sm">W32</td><td>bear put</td><td class="r loss">-50.0%</td><td class="r loss">-2.30%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">COIN</td><td class="hide-sm">W27</td><td>bear put</td><td class="r gain">+0.4%</td><td class="r gain">+0.06%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">CSCO</td><td class="hide-sm">W27</td><td>bear call</td><td class="r gain">+12.0%</td><td class="r gain">+0.20%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W30</td><td>long put</td><td class="r loss">-49.8%</td><td class="r loss">-2.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">HPE</td><td class="hide-sm">W27</td><td>bear call</td><td class="r loss">-87.1%</td><td class="r loss">-1.76%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">BX</td><td class="hide-sm">W25</td><td>bear put</td><td class="r gain">+55.9%</td><td class="r gain">+5.92%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W25</td><td>bear call</td><td class="r gain">+39.6%</td><td class="r gain">+0.38%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">CLX</td><td class="hide-sm">W23</td><td>bear put</td><td class="r loss">-49.8%</td><td class="r loss">-3.14%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">MO</td><td class="hide-sm">W23</td><td>bear call</td><td class="r loss">-38.3%</td><td class="r loss">-0.72%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W23</td><td>bull call</td><td class="r gain">+50.3%</td><td class="r gain">+5.83%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="nm">AMZN</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+3.6%</td><td class="r gain">+0.05%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">JPM</td><td class="hide-sm">W22</td><td>equity</td><td class="r loss">-2.3%</td><td class="r loss">-0.03%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="nm">NVDA</td><td class="hide-sm">W22</td><td>long call</td><td class="r loss">-44.3%</td><td class="r loss">-0.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">META</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+49.6%</td><td class="r gain">+0.99%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="sh show-lg" colspan="4">Realized total</td><td class="sh show-sm" colspan="3">Realized total</td><td class="r sh gain">+6.17%</td><td class="sh hide-sm"></td></tr></tbody></table></div><p style="color:var(--text-muted);font-size:9pt;font-style:italic;margin:8px 0 0 0;line-height:1.45">Exits are marked at each trade’s rule level: the stop or take-profit when it was reached, the defend price when a stock crossed it, or otherwise the 21-day force-close. Trades I closed by hand before any rule, and the four first-week trades from before the rules, keep their actual fills. Marks were standardized on October 18, 2026. This is a rules-based record, not a brokerage statement, and each trade’s note shows the actual fill.</p>
+    <div class="table-wrap closed-table"><table><thead><tr><th>Ticker</th><th class="hide-sm">Week</th><th>Structure</th><th class="r">Return</th><th class="r">Account</th><th class="hide-sm">Outcome</th></tr></thead><tbody><tr><td class="nm">APH</td><td class="hide-sm">W43</td><td>long put</td><td class="r gain">+100.0%</td><td class="r gain">+9.40%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">WMT</td><td class="hide-sm">W39</td><td>bear call</td><td class="r loss">-104.0%</td><td class="r loss">-2.08%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">ZTS</td><td class="hide-sm">W35</td><td>bear put</td><td class="r gain">+82.1%</td><td class="r gain">+6.73%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">NCLH</td><td class="hide-sm">W37</td><td>bear put</td><td class="r gain">+44.3%</td><td class="r gain">+8.82%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">PLTR</td><td class="hide-sm">W38</td><td>bear call</td><td class="r loss">-128.1%</td><td class="r loss">-2.47%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">NRG</td><td class="hide-sm">W38</td><td>bear call</td><td class="r gain">+50.0%</td><td class="r gain">+0.86%</td><td class="hide-sm">Target hit</td></tr><tr><td class="nm">FCX</td><td class="hide-sm">W35</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-3.80%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">TGT</td><td class="hide-sm">W37</td><td>bull call</td><td class="r loss">-50.0%</td><td class="r loss">-4.75%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W32</td><td>bull call</td><td class="r gain">+15.2%</td><td class="r gain">+1.15%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">BLDR</td><td class="hide-sm">W32</td><td>bear put</td><td class="r loss">-50.0%</td><td class="r loss">-2.30%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">COIN</td><td class="hide-sm">W27</td><td>bear put</td><td class="r gain">+0.4%</td><td class="r gain">+0.06%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">CSCO</td><td class="hide-sm">W27</td><td>bear call</td><td class="r gain">+12.0%</td><td class="r gain">+0.20%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W30</td><td>long put</td><td class="r loss">-49.8%</td><td class="r loss">-2.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">HPE</td><td class="hide-sm">W27</td><td>bear call</td><td class="r loss">-87.1%</td><td class="r loss">-1.76%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">BX</td><td class="hide-sm">W25</td><td>bear put</td><td class="r gain">+55.9%</td><td class="r gain">+5.92%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">SMCI</td><td class="hide-sm">W25</td><td>bear call</td><td class="r gain">+39.6%</td><td class="r gain">+0.38%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">CLX</td><td class="hide-sm">W23</td><td>bear put</td><td class="r loss">-49.8%</td><td class="r loss">-3.14%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">MO</td><td class="hide-sm">W23</td><td>bear call</td><td class="r loss">-38.3%</td><td class="r loss">-0.72%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="nm">CNC</td><td class="hide-sm">W23</td><td>bull call</td><td class="r gain">+50.3%</td><td class="r gain">+5.83%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="nm">AMZN</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+3.6%</td><td class="r gain">+0.05%</td><td class="hide-sm">21-day close</td></tr><tr><td class="nm">JPM</td><td class="hide-sm">W22</td><td>equity</td><td class="r loss">-2.3%</td><td class="r loss">-0.03%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="nm">NVDA</td><td class="hide-sm">W22</td><td>long call</td><td class="r loss">-44.3%</td><td class="r loss">-0.89%</td><td class="hide-sm">Stopped out</td></tr><tr><td class="nm">META</td><td class="hide-sm">W22</td><td>long call</td><td class="r gain">+49.6%</td><td class="r gain">+0.99%</td><td class="hide-sm">Closed by hand</td></tr><tr><td class="sh show-lg" colspan="4">Realized total</td><td class="sh show-sm" colspan="3">Realized total</td><td class="r sh gain">+15.57%</td><td class="sh hide-sm"></td></tr></tbody></table></div><p style="color:var(--text-muted);font-size:9pt;font-style:italic;margin:8px 0 0 0;line-height:1.45">Exits are marked at each trade’s rule level: the stop or take-profit when it was reached, the defend price when a stock crossed it, or otherwise the 21-day force-close. Trades I closed by hand before any rule, and the four first-week trades from before the rules, keep their actual fills. Marks were standardized on October 18, 2026. This is a rules-based record, not a brokerage statement, and each trade’s note shows the actual fill.</p>
   </section>
 
   <section>
