@@ -686,39 +686,40 @@ SCRIPT_V5 = r'''(function () {
   // ── Fetch live stock prices ────────────────────────────────────────────────
   function fetchPrices(eod) {
     if (!PICKS || !PICKS.length) return;
-    var idx = 0, updated = 0;
+    // Fetch every ticker at once rather than one after another, so the
+    // indicator settles in one proxy round trip (about 6s worst case)
+    // instead of one round trip per open position.
+    var pending = 0, updated = 0;
 
-    function next() {
-      if (idx >= PICKS.length) {
-        if (updated > 0) {
-          lastOk = Date.now();
-          updateUnrealizedPnl();
-          stampTime(eod);
-        } else if (eod) {
-          // Market closed and the live feed is unreachable (the public CORS
-          // proxies 403 regularly). The cards already show the build-time
-          // closing prices, so label them for what they are instead of
-          // leaving the indicator spinning on "Updating prices…" forever.
-          var ts = document.getElementById('live-ts');
-          if (ts) ts.textContent = PRICE_ASOF ? 'Close ' + PRICE_ASOF : 'Close';
-          setIndicator('stale');
-        } else {
-          // Market open and the browser feed is unreachable. This is the
-          // normal case: the public CORS proxies now require API keys. The
-          // page is rebuilt by CI every hour through the session, so the
-          // prices on screen are hourly closes, not a broken feed. Say that
-          // rather than flashing a scary "feed unavailable" warning.
-          var ts2 = document.getElementById('live-ts');
-          if (ts2) ts2.textContent = BUILD_TIME ? 'Built ' + BUILD_TIME : 'Hourly';
-          setIndicator('hourly');
-        }
-        return;
+    function finish() {
+      if (updated > 0) {
+        lastOk = Date.now();
+        updateUnrealizedPnl();
+        stampTime(eod);
+      } else if (eod) {
+        // Market closed and the live feed is unreachable (the public CORS
+        // proxies 403 regularly). The cards already show the build-time
+        // closing prices, so label them for what they are instead of
+        // leaving the indicator spinning on "Updating prices…" forever.
+        var ts = document.getElementById('live-ts');
+        if (ts) ts.textContent = PRICE_ASOF ? 'Close ' + PRICE_ASOF : 'Close';
+        setIndicator('stale');
+      } else {
+        // Market open and the browser feed is unreachable. This is the
+        // normal case: the public CORS proxies now require API keys. The
+        // page is rebuilt by CI every hour through the session, so the
+        // prices on screen are hourly closes, not a broken feed. Say that
+        // rather than flashing a scary "feed unavailable" warning.
+        var ts2 = document.getElementById('live-ts');
+        if (ts2) ts2.textContent = BUILD_TIME ? 'Built ' + BUILD_TIME : 'Hourly';
+        setIndicator('hourly');
       }
-      var pick = PICKS[idx++];
+    }
+
+    PICKS.forEach(function (pick) {
       // Skip pending picks ONLY if market hasn't opened yet (still showing PENDING)
-      if (pick.pending && !isEffectivelyOpen(pick)) {
-        setTimeout(next, 0); return;
-      }
+      if (pick.pending && !isEffectivelyOpen(pick)) return;
+      pending++;
       var yf   = 'https://query1.finance.yahoo.com/v8/finance/chart/'
                + pick.ticker + '?interval=1m&range=1d&_=' + Date.now();
 
@@ -731,9 +732,9 @@ SCRIPT_V5 = r'''(function () {
           updated++;
         })
         .catch(function () {})
-        .then(function () { setTimeout(next, 700); });
-    }
-    next();
+        .then(function () { if (--pending === 0) finish(); });
+    });
+    if (pending === 0) finish();
   }
 
   // ── Main loop ─────────────────────────────────────────────────────────────
