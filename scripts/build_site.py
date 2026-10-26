@@ -1179,6 +1179,17 @@ def _build_options_block(row) -> str:
         return ''
 
     strike      = _safe(row.get('strike',''))
+    # Two-leg spreads show both strikes: the leg this row is keyed on, then the other leg.
+    try:
+        spread_w = abs(float(row.get('short_strike')) - float(row.get('strike')))
+    except (TypeError, ValueError):
+        spread_w = 0.0
+    if spread_w != spread_w:   # NaN when the short_strike cell is blank
+        spread_w = 0.0
+    strike_label = 'Strike'
+    if spread_w > 0:
+        strike       = f"{strike} / {_safe(row.get('short_strike',''))}"
+        strike_label = 'Strikes'
     expiry      = str(row.get('expiry',''))[:10]
     premium     = _safe(row.get('premium_paid',''))
     break_even  = _safe(row.get('break_even',''))
@@ -1217,6 +1228,9 @@ def _build_options_block(row) -> str:
     vega_disp = vega if str(vega).startswith('-') else f"+{vega}"
     if is_credit:
         lev_label, lev_val = "Max Gain", f"{premium}/share"
+    elif spread_w > prem_val > 0:
+        # Debit spread: the most it can make is the strike width less the debit.
+        lev_label, lev_val = "Max Gain", f"${spread_w - prem_val:.2f}/share"
     else:
         lev_label, lev_val = "Leverage", f"{leverage}×"
 
@@ -1239,7 +1253,7 @@ def _build_options_block(row) -> str:
       <div class="options-title">{type_label} Option Details · {loss_title}</div>
       <div class="options-row">
         <div class="opt-item">
-          <label>Strike</label>
+          <label>{strike_label}</label>
           <div class="opt-val purple">{strike}</div>
         </div>
         <div class="opt-item">
@@ -1348,8 +1362,12 @@ def _build_picks_html(picks_df: pd.DataFrame) -> str:
                 _w = 0.0
             m3_label, m3_val, m3_cls = "Buyback Target", f"${_cr/2:.2f}", "gain"
             m4_label, m4_val, m4_cls = "Defend At", _safe(row.get("strike")), "loss"
+            # The entry note records the size as "Net credit $0.14 x 5"; default to one spread.
+            _n_m = re.search(r"\$[\d.]+ x (\d+)", str(row.get("entry_note", "")))
+            _n = int(_n_m.group(1)) if _n_m else 1
+            _per = "per spread" if _n == 1 else f"on {_n} spreads"
             progress_html = (f'<div class="pick-progress"><div class="progress-row" style="justify-content:center">'
-                             f'<span class="p-rr">Max gain ${_cr*100:,.0f} per spread · Max loss ${(_w-_cr)*100:,.0f}</span>'
+                             f'<span class="p-rr">Max gain ${_cr*100*_n:,.0f} · Max loss ${(_w-_cr)*100*_n:,.0f} {_per}</span>'
                              f'</div></div>')
         elif instrument in ("call", "put") and _prem > 0:
             # Real exit rules are on the option price: stop at -50% of the debit,
