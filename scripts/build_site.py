@@ -1189,7 +1189,11 @@ def _build_options_block(row) -> str:
         spread_w = 0.0
     strike_label = 'Strike'
     if spread_w > 0:
-        strike       = f"{strike} / {_safe(row.get('short_strike',''))}"
+        # Whole-dollar strikes drop the cents so both legs fit on one line on a phone.
+        def _k(v):
+            v = float(v)
+            return f"${v:,.0f}" if v.is_integer() else f"${v:,.2f}"
+        strike       = f"{_k(row.get('strike'))} / {_k(row.get('short_strike'))}"
         strike_label = 'Strikes'
     expiry      = str(row.get('expiry',''))[:10]
     premium     = _safe(row.get('premium_paid',''))
