@@ -1581,6 +1581,7 @@ def _build_closed_html(df) -> str:
         outcome = ("Target hit"     if "target" in status else
                    "Stopped out"    if "stop"   in status else
                    "21-day close"   if "force"  in status else
+                   "Earnings exit"  if "earnings" in status else
                    "Closed by hand" if "hand"   in status else "Closed")
         html += (f'<tr><td class="nm">{r.get("ticker","")}</td>'
                  f'<td class="hide-sm">{str(r.get("week_added","")).replace("2026-","")}</td>'
@@ -1597,7 +1598,7 @@ def _build_closed_html(df) -> str:
              'margin:8px 0 0 0;line-height:1.45">'
              'Exits are marked at each trade\u2019s rule level: the stop or take-profit when it '
              'was reached, the defend price when a stock crossed it, or otherwise the 21-day '
-             'force-close. Trades I closed by hand before any rule, and the four first-week '
+             'force-close or the day-before-earnings exit. Trades I closed by hand before any rule, and the four first-week '
              'trades from before the rules, keep their actual fills. Marks were standardized on '
              'October 18, 2026. This is a rules-based record, not a brokerage statement, and '
              'each trade\u2019s note shows the actual fill.</p>')
