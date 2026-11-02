@@ -1600,8 +1600,8 @@ def _build_closed_html(df) -> str:
              'was reached, the defend price when a stock crossed it, or otherwise the 21-day '
              'force-close or the day-before-earnings exit. Trades I closed by hand before any rule, and the four first-week '
              'trades from before the rules, keep their actual fills. Marks were standardized on '
-             'October 18, 2026. This is a rules-based record, not a brokerage statement, and '
-             'each trade\u2019s note shows the actual fill.</p>')
+             'October 18, 2026. Defend and earnings-exit prices are model estimates. This is a '
+             'rules-based record, not a brokerage statement, so my actual fills can differ.</p>')
     return html
 
 
