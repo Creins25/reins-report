@@ -389,7 +389,7 @@ SCRIPT_V5 = r'''(function () {
   var PICKS = __PICKS_JSON__;
   var PRICE_ASOF = '__PRICE_ASOF__';
   var BUILD_TIME = '__BUILD_TIME__';
-  var SPY_BASE = __SPY_BASE__;   // SPY price at track-record inception (0 = alpha disabled)
+  var SPY_BASE = __SPY_BASE__;   // SPY dividend-adjusted close at inception, so live/base is total return (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
   var PROXIES = [
@@ -1661,20 +1661,25 @@ def _current_week_str() -> str:
 
 
 def _spy_baseline():
-    """Baseline for the Alpha vs SPY stat.
+    """Baseline for the S&P 500 and Alpha vs SPY stats.
 
     Returns (inception_date_str, spy_base_price, spy_return_pct):
       - inception_date = earliest date_added across all picks (track start)
-      - spy_base_price = SPY close on/after that date (immutable history)
-      - spy_return_pct = (current SPY / base - 1) * 100
+      - spy_base_price = SPY's dividend-adjusted close on the last trading day
+        on or before that date. The first picks were priced off that close, so
+        both sides of the comparison start from the same moment.
+      - spy_return_pct = (current SPY / base - 1) * 100, a total return
 
-    The base price is historical and never changes, so it is cached on disk
-    (data/spy_baseline.json). A transient yfinance failure then falls back to
-    the cached base + last-known return instead of dropping the Alpha/SPY
-    cards. Returns (None, None, None) only if there is no data AND no cache.
+    Yahoo's adjusted closes are scaled to today's price, so current price over
+    adjusted base is SPY's total return with dividends reinvested. The scaling
+    changes after every ex-dividend date, so the base is refetched each build.
+    A failed fetch falls back to the cached base and last-known return instead
+    of dropping the cards. Returns (None, None, None) only if there is no data
+    AND no cache.
     """
     import json as _json
     cache_path = _PROJECT_ROOT / "data" / "spy_baseline.json"
+    METHOD = "total_return_from_prior_close"
 
     def _load_cache():
         try:
@@ -1693,32 +1698,35 @@ def _spy_baseline():
     if not incept:
         return (None, None, None)
 
-    # Base price: reuse cache when the inception matches; else fetch once.
-    base = cache.get("base") if cache.get("inception") == incept else None
-    if base is None:
-        try:
-            import yfinance as yf
-            hist = yf.Ticker("SPY").history(start=incept, auto_adjust=False)
-            if hist is not None and not hist.empty:
-                base = float(hist["Close"].iloc[0])
-        except Exception:
-            base = None
-    if base is None:
-        return (incept, None, None)        # no base and no cache: omit cards
-
-    # Current price: live if possible, else fall back to last cached return.
-    ret = cache.get("last_return")
+    # Cached values only count if they were computed the same way for the same start.
+    cache_ok = cache.get("inception") == incept and cache.get("method") == METHOD
+    base, base_date = None, None
+    ret = cache.get("last_return") if cache_ok else None
     try:
         import yfinance as yf
+        start = date.fromisoformat(incept) - timedelta(days=10)
+        hist = yf.Ticker("SPY").history(start=start.isoformat(), auto_adjust=False)
+        if hist is not None and not hist.empty:
+            idx = [d.date() for d in hist.index]
+            prior = [i for i, d in enumerate(idx) if d <= date.fromisoformat(incept)]
+            if prior:
+                base      = float(hist["Adj Close"].iloc[prior[-1]])
+                base_date = idx[prior[-1]].isoformat()
+                ret       = (float(hist["Close"].iloc[-1]) / base - 1) * 100
         cur = float(yf.Ticker("SPY").fast_info.last_price or 0)
-        if cur:
+        if cur and base:
             ret = (cur / base - 1) * 100
     except Exception:
         pass
+    if base is None and cache_ok:
+        base, base_date = cache.get("base"), cache.get("base_date")
+    if base is None:
+        return (incept, None, None)        # no base and no cache: omit cards
 
     try:
         cache_path.write_text(_json.dumps({
-            "inception": incept, "base": round(base, 4),
+            "inception": incept, "method": METHOD, "base_date": base_date,
+            "base": round(base, 4),
             "last_return": round(ret, 4) if ret is not None else None,
         }))
     except Exception:
