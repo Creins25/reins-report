@@ -364,9 +364,9 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 </style>
   <script>
   (function () {
-  var PICKS = [{"id": "366f6cc5", "ticker": "T", "entry": 20.93, "direction": "short", "stop": 23.0, "target": 23.0, "instrument": "call", "entry_premium": 0.14, "premium": 0.14, "delta": -0.099, "gamma": -0.0368, "build_premium": 0.155, "build_spot": 21.85, "pending": false, "account_risk_pct": 8.6, "strike": 23.0, "expiry": "2026-12-18", "is_credit": true, "short_strike": 24.0, "spread_kind": "bear_call", "pnl_weight": 1.4}, {"id": "e43c7a3d", "ticker": "BA", "entry": 171.55, "direction": "short", "stop": 183.0, "target": 155.0, "instrument": "put", "entry_premium": 4.62, "premium": 4.62, "delta": -0.268, "gamma": 0.0076, "build_premium": 7.9, "build_spot": 160.51, "pending": false, "account_risk_pct": 9.2, "strike": 170.0, "expiry": "2026-12-18", "is_credit": false, "short_strike": 155.0, "spread_kind": "bear_put", "pnl_weight": 9.2}];
-  var PRICE_ASOF = 'Nov 19, 2026';
-  var BUILD_TIME = 'Nov 19, 8:56 PM ET';
+  var PICKS = [{"id": "366f6cc5", "ticker": "T", "entry": 20.93, "direction": "short", "stop": 23.0, "target": 23.0, "instrument": "call", "entry_premium": 0.14, "premium": 0.14, "delta": -0.099, "gamma": -0.0368, "build_premium": 0.265, "build_spot": 22.31, "pending": false, "account_risk_pct": 8.6, "strike": 23.0, "expiry": "2026-12-18", "is_credit": true, "short_strike": 24.0, "spread_kind": "bear_call", "pnl_weight": 1.4}, {"id": "e43c7a3d", "ticker": "BA", "entry": 171.55, "direction": "short", "stop": 183.0, "target": 155.0, "instrument": "put", "entry_premium": 4.62, "premium": 4.62, "delta": -0.268, "gamma": 0.0076, "build_premium": 9.35, "build_spot": 155.89, "pending": false, "account_risk_pct": 9.2, "strike": 170.0, "expiry": "2026-12-18", "is_credit": false, "short_strike": 155.0, "spread_kind": "bear_put", "pnl_weight": 9.2}];
+  var PRICE_ASOF = 'Nov 20, 2026';
+  var BUILD_TIME = 'Nov 20, 4:22 PM ET';
   var SPY_BASE = 741.8818;   // SPY dividend-adjusted close at inception, so live/base is total return (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -763,7 +763,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </div>
     <div class="masthead-right">
       <div class="pub-week">2026-W47</div>
-      <div class="pub-date">November 16 to November 22, 2026 · Updated Nov 19, 2026</div>
+      <div class="pub-date">November 16 to November 22, 2026 · Updated Nov 20, 2026</div>
       <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="live-indicator" style="color:rgba(255,255,255,.4)">⚫ MARKET CLOSED</div>
         <div id="live-ts" style="font-size:9.5px;color:rgba(255,255,255,.28);letter-spacing:.05em"></div>
@@ -807,7 +807,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   <section>
     <div class="section-label">📊 Track Record</div>
-    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">28</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">2</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">26</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="4.7921">+4.79%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val loss" id="spy-return-val">-3.51%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="-3.5062">+8.30%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
+    <div class="stats-row"><div class="stat-card"><div class="stat-val navy">28</div><div class="stat-lbl">Total Picks</div></div><div class="stat-card"><div class="stat-val gold">2</div><div class="stat-lbl">Open</div></div><div class="stat-card"><div class="stat-val muted">26</div><div class="stat-lbl">Closed</div></div><div class="stat-card"><div class="stat-val gain" id="unrealized-pnl-val" data-realized="4.7921">+4.79%</div><div class="stat-lbl">Cumulative P/L</div></div><div class="stat-card"><div class="stat-val loss" id="spy-return-val">-6.88%</div><div class="stat-lbl">S&amp;P 500</div></div><div class="stat-card"><div class="stat-val gain" id="alpha-val" data-spybuild="-6.8760">+11.67%</div><div class="stat-lbl">Alpha vs SPY</div></div></div>
   </section>
 
   <section>
@@ -937,7 +937,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,57.7 33.0,47.8 52.0,36.4 71.0,30.0 90.0,15.7 109.0,17.6 128.0,25.3 147.0,18.3 166.0,66.3 185.0,39.9 204.0,97.4 223.0,99.9 242.0,97.1 261.0,104.7 280.0,97.7 299.0,82.1 318.0,81.2 337.0,82.8 356.0,68.8 375.0,69.1 394.0,75.2 413.0,69.8 432.0,65.3 451.0,55.1 470.0,57.7 489.0,57.7 508.0,52.0 527.0,54.2 546.0,65.0 546.0,108" fill="url(#fill-T)"/>
+  <polygon points="14.0,108 14.0,47.8 32.3,36.4 50.7,30.0 69.0,15.7 87.4,17.6 105.7,25.3 124.1,18.3 142.4,66.3 160.8,39.9 179.1,97.4 197.4,99.9 215.8,97.1 234.1,104.7 252.5,97.7 270.8,82.1 289.2,81.2 307.5,82.8 325.9,68.8 344.2,69.1 362.6,75.2 380.9,69.8 399.2,65.3 417.6,55.1 435.9,57.7 454.3,57.7 472.6,52.0 491.0,54.2 509.3,65.0 527.7,68.2 546.0,53.5 546.0,108" fill="url(#fill-T)"/>
   
   <!-- Entry line -->
   <line x1="14" y1="97.4" x2="546" y2="97.4"
@@ -950,10 +950,10 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   <text x="548" y="31.6" dy="4" font-size="9" fill="#b91c1c"
         font-family="monospace">$23.00</text>
   <!-- Price line -->
-  <polyline points="14.0,57.7 33.0,47.8 52.0,36.4 71.0,30.0 90.0,15.7 109.0,17.6 128.0,25.3 147.0,18.3 166.0,66.3 185.0,39.9 204.0,97.4 223.0,99.9 242.0,97.1 261.0,104.7 280.0,97.7 299.0,82.1 318.0,81.2 337.0,82.8 356.0,68.8 375.0,69.1 394.0,75.2 413.0,69.8 432.0,65.3 451.0,55.1 470.0,57.7 489.0,57.7 508.0,52.0 527.0,54.2 546.0,65.0" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,47.8 32.3,36.4 50.7,30.0 69.0,15.7 87.4,17.6 105.7,25.3 124.1,18.3 142.4,66.3 160.8,39.9 179.1,97.4 197.4,99.9 215.8,97.1 234.1,104.7 252.5,97.7 270.8,82.1 289.2,81.2 307.5,82.8 325.9,68.8 344.2,69.1 362.6,75.2 380.9,69.8 399.2,65.3 417.6,55.1 435.9,57.7 454.3,57.7 472.6,52.0 491.0,54.2 509.3,65.0 527.7,68.2 546.0,53.5" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="65.0" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="53.5" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         
@@ -1097,23 +1097,23 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
     </linearGradient>
   </defs>
   <!-- fill under curve -->
-  <polygon points="14.0,108 14.0,20.9 33.0,23.5 52.0,32.8 71.0,38.5 90.0,25.9 109.0,21.3 128.0,17.6 147.0,20.5 166.0,15.0 185.0,29.5 204.0,27.1 223.0,27.2 242.0,89.2 261.0,92.5 280.0,75.5 299.0,78.9 318.0,67.0 337.0,73.4 356.0,62.1 375.0,75.9 394.0,73.2 413.0,76.3 432.0,73.2 451.0,69.6 470.0,78.9 489.0,79.0 508.0,98.4 527.0,102.4 546.0,105.5 546.0,108" fill="url(#fill-BA)"/>
+  <polygon points="14.0,108 14.0,21.4 32.3,29.0 50.7,33.6 69.0,23.4 87.4,19.6 105.7,16.6 124.1,19.0 142.4,14.4 160.8,26.3 179.1,24.3 197.4,24.4 215.8,75.1 234.1,77.7 252.5,63.8 270.8,66.6 289.2,56.9 307.5,62.2 325.9,52.9 344.2,64.2 362.6,62.0 380.9,64.5 399.2,62.0 417.6,59.1 435.9,66.6 454.3,66.7 472.6,82.5 491.0,85.8 509.3,88.4 527.7,94.4 546.0,106.0 546.0,108" fill="url(#fill-BA)"/>
   
   <!-- Entry line -->
-  <line x1="14" y1="78.9" x2="546" y2="78.9"
+  <line x1="14" y1="66.6" x2="546" y2="66.6"
         stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-  <text x="548" y="78.9" dy="4" font-size="9" fill="#1d4ed8"
+  <text x="548" y="66.6" dy="4" font-size="9" fill="#1d4ed8"
         font-family="monospace">$172</text>
   <!-- Stop line -->
-  <line x1="14" y1="97.9" x2="546" y2="97.9"
+  <line x1="14" y1="82.1" x2="546" y2="82.1"
         stroke="#6b6b6b" stroke-width="1.2" stroke-dasharray="5,3" opacity="0.7"/>
-  <text x="548" y="97.9" dy="4" font-size="9" fill="#6b6b6b"
+  <text x="548" y="82.1" dy="4" font-size="9" fill="#6b6b6b"
         font-family="monospace">$165</text>
   <!-- Price line -->
-  <polyline points="14.0,20.9 33.0,23.5 52.0,32.8 71.0,38.5 90.0,25.9 109.0,21.3 128.0,17.6 147.0,20.5 166.0,15.0 185.0,29.5 204.0,27.1 223.0,27.2 242.0,89.2 261.0,92.5 280.0,75.5 299.0,78.9 318.0,67.0 337.0,73.4 356.0,62.1 375.0,75.9 394.0,73.2 413.0,76.3 432.0,73.2 451.0,69.6 470.0,78.9 489.0,79.0 508.0,98.4 527.0,102.4 546.0,105.5" fill="none" stroke="#0d1f35"
+  <polyline points="14.0,21.4 32.3,29.0 50.7,33.6 69.0,23.4 87.4,19.6 105.7,16.6 124.1,19.0 142.4,14.4 160.8,26.3 179.1,24.3 197.4,24.4 215.8,75.1 234.1,77.7 252.5,63.8 270.8,66.6 289.2,56.9 307.5,62.2 325.9,52.9 344.2,64.2 362.6,62.0 380.9,64.5 399.2,62.0 417.6,59.1 435.9,66.6 454.3,66.7 472.6,82.5 491.0,85.8 509.3,88.4 527.7,94.4 546.0,106.0" fill="none" stroke="#0d1f35"
             stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- Last price dot -->
-  <circle cx="546.0" cy="105.5" r="3.5" fill="#0d1f35"/>
+  <circle cx="546.0" cy="106.0" r="3.5" fill="#0d1f35"/>
 </svg></div>
       <div class="chart-legend">
         
