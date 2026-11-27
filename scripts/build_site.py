@@ -606,8 +606,15 @@ SCRIPT_V5 = r'''(function () {
 
   function updateUnrealizedPnl() {
     var el = document.getElementById('unrealized-pnl-val');
-    if (!el || !PICKS || !PICKS.length) return;
+    if (!el) return;
     var realized = parseFloat(el.getAttribute('data-realized') || '0') || 0;
+    // No open positions: the strategy total is just the realized P/L.
+    // (Without this, strategyTotal stayed 0 and Alpha showed 0 minus SPY.)
+    if (!PICKS || !PICKS.length) {
+      strategyTotal = realized;
+      updateAlpha();
+      return;
+    }
 
     var liveContrib = 0;
     PICKS.forEach(function (pick) {

@@ -366,7 +366,7 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
   (function () {
   var PICKS = [];
   var PRICE_ASOF = 'Nov 27, 2026';
-  var BUILD_TIME = 'Nov 27, 1:03 PM ET';
+  var BUILD_TIME = 'Nov 27, 1:05 PM ET';
   var SPY_BASE = 741.8818;   // SPY dividend-adjusted close at inception, so live/base is total return (0 = alpha disabled)
 
   // CORS proxies: race for stock price only (option prices come from build time)
@@ -584,8 +584,15 @@ footer .pub-credit { font-size:10px; color:rgba(255,255,255,.2); letter-spacing:
 
   function updateUnrealizedPnl() {
     var el = document.getElementById('unrealized-pnl-val');
-    if (!el || !PICKS || !PICKS.length) return;
+    if (!el) return;
     var realized = parseFloat(el.getAttribute('data-realized') || '0') || 0;
+    // No open positions: the strategy total is just the realized P/L.
+    // (Without this, strategyTotal stayed 0 and Alpha showed 0 minus SPY.)
+    if (!PICKS || !PICKS.length) {
+      strategyTotal = realized;
+      updateAlpha();
+      return;
+    }
 
     var liveContrib = 0;
     PICKS.forEach(function (pick) {
